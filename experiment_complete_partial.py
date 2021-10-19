@@ -18,7 +18,7 @@ from pathlib import Path
 NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
-NUM_EPOCH = 250
+NUM_EPOCH = 150
 FEATURE_TRANSFORM = True
 
 LEARNING_RATE = 0.001
@@ -29,6 +29,8 @@ GAMMA = 0.5
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 NUM_WORKERS = 4
+
+RESULT_LOG_ROOT = 'result/'
 TRAINED_MODEL_ROOT = 'trained_model/'
 PRETRAINED_MODEL = None
 
@@ -41,20 +43,20 @@ complete_train_dataset = MVP(
     is_train=True,
     root='./data/')
 
-complete_test_dataset = MVP(
-    shape_type="complete",
+partial_test_dataset = MVP(
+    shape_type="partial",
     is_train=False,
     root='./data/')
 
-train_loader = torch.utils.data.DataLoader(
+complete_train_loader = torch.utils.data.DataLoader(
     dataset=complete_train_dataset,
     batch_size=BATCH_SIZE,
     shuffle=True,
     num_workers=NUM_WORKERS
 )
 
-test_loader = torch.utils.data.DataLoader(
-    dataset=complete_test_dataset,
+partial_test_loader = torch.utils.data.DataLoader(
+    dataset=partial_test_dataset,
     batch_size=BATCH_SIZE,
     shuffle=False,
     num_workers=NUM_WORKERS
@@ -70,8 +72,9 @@ classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM).to(
 optimizer = optim.Adam(classifier.parameters(), lr=LEARNING_RATE, betas=BETAS)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
+
 # num_batch = len(dataset) / opt.batchSize
-num_batch = len(complete_train_dataset) / BATCH_SIZE
+# num_batch = len(complete_train_dataset) / BATCH_SIZE
 
 
 def train(model, lr_schedule, train_loader, trained_model_directory):
@@ -149,7 +152,7 @@ def logging(file, epoch, train_result, test_result):
 
 
 def get_log_file(train_shape: str, test_shape: str):
-    directory = Path("./result/")
+    directory = Path(RESULT_LOG_ROOT)
     now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     file_name = f"{train_shape}_{test_shape}_{now}.txt"
     file = open(directory / file_name, "w")
@@ -181,13 +184,13 @@ def save_trained_model(model, epoch, directory):
 
 if __name__ == "__main__":
 
-    file = get_log_file(train_shape="complete", test_shape="complete")
-    trained_model_directory = get_trained_model_directory(train_shape="complete", test_shape="complete")
+    file = get_log_file(train_shape="complete", test_shape="partial")
+    trained_model_directory = get_trained_model_directory(train_shape="complete", test_shape="partial")
 
-    for epoch in range(3):
+    for epoch in range(NUM_EPOCH):
         train_result = train(model=classifier, lr_schedule=scheduler,
-                             train_loader=train_loader, trained_model_directory=trained_model_directory)
-        test_result = evaluate(model=classifier, test_loader=test_loader)
+                             train_loader=complete_train_loader, trained_model_directory=trained_model_directory)
+        test_result = evaluate(model=classifier, test_loader=partial_test_loader)
 
         logging(file, epoch, train_result, test_result)
 

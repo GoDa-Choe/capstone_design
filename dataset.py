@@ -76,20 +76,20 @@ class MVP(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    complete_train_dataset = MVP(
-        shape_type="complete",
+    partial_train_dataset = MVP(
+        shape_type="partial",
         is_train=True,
         root='./data/')
 
-    train_loader = torch.utils.data.DataLoader(
-        dataset=complete_train_dataset,
+    partial_train_loader = torch.utils.data.DataLoader(
+        dataset=partial_train_dataset,
         batch_size=32,
         shuffle=True,
         # num_workers=NUM_WORKERS
     )
 
-    print(len(complete_train_dataset.labels))
-    print(len(complete_train_dataset.input_data))
+    print(len(partial_train_dataset.labels))
+    print(len(partial_train_dataset.input_data))
     #
     # print(complete_train_dataset[2399][0])
     # print(complete_train_dataset[2399][1])
@@ -97,8 +97,11 @@ if __name__ == "__main__":
     # for i in range(len(complete_train_dataset)):
     #     print(complete_train_dataset[i][-1])
 
-    for i, (points, labels) in enumerate(train_loader):
+    for i, (points, labels) in enumerate(partial_train_loader):
         print(points.shape)
         print(labels.shape)
         print(labels)
+
+        print(points[1])
+        break
 
