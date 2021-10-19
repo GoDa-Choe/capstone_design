@@ -8,15 +8,15 @@ file_path = './data/MVP_Train_CP.h5'
 
 input_file = h5py.File(file_path, 'r')
 
-index = 26
+index = 30000
 temp = index // 26
 
 incomplete_pcd = np.array(input_file['incomplete_pcds'][index])
 complete_pcd = np.array(input_file['complete_pcds'][temp])
 label = np.array(input_file['labels'][index])
+print(len(input_file['labels']))
 
-
-
+print(label)
 fig = pyplot.figure(figsize=(10, 10))
 ax = fig.add_subplot(111, projection="3d")
 ax.scatter(complete_pcd[:, 0], complete_pcd[:, 2], complete_pcd[:, 1], c='royalblue')
