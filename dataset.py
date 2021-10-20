@@ -59,18 +59,6 @@ class MVP(torch.utils.data.Dataset):
         groud_truth = torch.from_numpy(self.gt_data[index])
         label = torch.from_numpy(np.array(self.labels[index].astype('int64')))
 
-        # if self.shape_type == "complete":
-            # label = torch.from_numpy(self.labels[index // 26])
-            # label = torch.from_numpy(self.labels[index // 26].astype('int64'))
-            # print(label_index)
-            # label = torch.from_numpy(np.array([self.labels[label_index]]))
-            # label = torch.LongTensor(self.labels[index // 26])
-
-        # else:
-            # label = torch.from_numpy(self.labels[index])
-            # label = torch.from_numpy(np.array(self.labels[index]).astype('int64'))
-            # label = torch.LongTensor(self.labels[index])
-
         # return input_data, groud_truth, label
         return input_data, label
 
@@ -104,4 +92,3 @@ if __name__ == "__main__":
 
         print(points[1])
         break
-

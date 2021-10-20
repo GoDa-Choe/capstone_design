@@ -122,7 +122,7 @@ def evaluate(model, test_loader):
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
             scores, trans, trans_feat = model(point_clouds)
             loss = F.nll_loss(scores, labels)

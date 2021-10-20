@@ -1,6 +1,7 @@
 ####
 
 data/
+trained_model/
 
 
 # Byte-compiled / optimized / DLL files
