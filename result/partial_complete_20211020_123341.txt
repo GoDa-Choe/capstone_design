@@ -1,0 +1,2 @@
+Epoch Train_Loss Train_Accuracy Test_Loss Test_Accuracy
+0 0.022482 0.782340 0.019523 0.794375

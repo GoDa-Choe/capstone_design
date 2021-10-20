@@ -16,10 +16,10 @@ from tqdm import tqdm
 # Todo 3. Saving trained network
 
 #####
-NUM_POINTS = 2048
+NUM_POINTS = 512
 BATCH_SIZE = 260
 NUM_CLASSES = 16
-NUM_EPOCH = 200
+NUM_EPOCH = 100
 FEATURE_TRANSFORM = True
 
 LEARNING_RATE = 0.001
@@ -39,8 +39,9 @@ blue = lambda x: '\033[94m' + x + '\033[0m'
 
 #####
 
-complete_train_dataset = MVP(
-    shape_type="complete",
+
+partial_train_dataset = MVP(
+    shape_type="partial",
     is_train=True,
     root='./data/')
 
@@ -49,8 +50,8 @@ complete_test_dataset = MVP(
     is_train=False,
     root='./data/')
 
-complete_train_loader = torch.utils.data.DataLoader(
-    dataset=complete_train_dataset,
+partial_train_loader = torch.utils.data.DataLoader(
+    dataset=partial_train_dataset,
     batch_size=BATCH_SIZE,
     shuffle=True,
     num_workers=NUM_WORKERS
@@ -74,8 +75,8 @@ optimizer = optim.Adam(classifier.parameters(), lr=LEARNING_RATE, betas=BETAS)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 # num_batch = len(dataset) / opt.batchSize
-num_batch = len(complete_train_dataset) / BATCH_SIZE
-
+num_batch = len(partial_train_loader) / BATCH_SIZE
+print(len(partial_train_loader))
 
 def train(model, lr_schedule, train_loader, trained_model_directory):
     total_loss = 0.0
@@ -86,6 +87,11 @@ def train(model, lr_schedule, train_loader, trained_model_directory):
 
     for batch_index, (point_clouds, labels) in enumerate(train_loader):
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
+
+        # reducing number of points (batch_size, 3, 2048) -> (batch_size, 3, NUM_POINTS)000
+        indices = torch.randperm(point_clouds.shape[-1])[:NUM_POINTS]
+        point_clouds = point_clouds[:, :, indices]
+
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
         optimizer.zero_grad()
@@ -104,7 +110,6 @@ def train(model, lr_schedule, train_loader, trained_model_directory):
         total_correct += (predictions == labels).sum().item()
         count += labels.size(0)
 
-        # print(trained_model_directory)
     save_trained_model(model, epoch, trained_model_directory)
 
     lr_schedule.step()
@@ -184,12 +189,12 @@ def save_trained_model(model, epoch, directory):
 
 if __name__ == "__main__":
 
-    file = get_log_file(train_shape="complete", test_shape="complete")
-    trained_model_directory = get_trained_model_directory(train_shape="complete", test_shape="complete")
+    file = get_log_file(train_shape="partial", test_shape="complete")
+    trained_model_directory = get_trained_model_directory(train_shape="partial", test_shape="complete")
 
     for epoch in tqdm(range(NUM_EPOCH)):
         train_result = train(model=classifier, lr_schedule=scheduler,
-                             train_loader=complete_train_loader, trained_model_directory=trained_model_directory)
+                             train_loader=partial_train_loader, trained_model_directory=trained_model_directory)
         test_result = evaluate(model=classifier, test_loader=complete_test_loader)
 
         logging(file, epoch, train_result, test_result)
