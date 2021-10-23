@@ -10,7 +10,7 @@ title_font = {
     'fontweight': 'bold'
 }
 
-file_path = './data/MVP_Train_CP.h5'
+file_path = '../data/MVP_Train_CP.h5'
 
 input_file = h5py.File(file_path, 'r')
 

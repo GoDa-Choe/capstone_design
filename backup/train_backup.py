@@ -1,15 +1,10 @@
-import argparse
-import os
-import random
-import torch
-import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 # from pointnet.dataset import ShapeNetDataset, ModelNetDataset
-from pointnet import PointNetCls, feature_transform_regularizer
+from src.models.pointnet import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 from tqdm import tqdm
-from dataset import MVP
+from src.dataset.dataset import MVP
 
 #####
 
