@@ -42,9 +42,14 @@ class RawDatasetLoader:
 
 # noinspection SpellCheckingInspection,DuplicatedCode,PyChainedComparisons
 class Partition:
-    def __init__(self, raw_dataset: RawDatasetLoader, partition_type="6-plain", select_num=3, num_points=3):
+    def __init__(self, raw_dataset: RawDatasetLoader, partition_type="6-plain",
+                 select_num: int = 3, num_points: int = 3):
         self.raw_dataset = raw_dataset
         self.partition_type = partition_type
+
+        self.select_num = select_num
+        self.num_points = num_points
+
         complete_pcds = np.repeat(self.raw_dataset.complete_pcds, 6, axis=0)
         labels = np.repeat(self.raw_dataset.labels, 6, axis=0)
 
@@ -52,6 +57,13 @@ class Partition:
             self.full_partial_pcds = self.six_plain_partition()
         else:
             self.full_partial_pcds = self.eight_axis_partition()
+
+    @staticmethod
+    def __select_among_partition(partitioned_pcds):
+        partitioned_pcds_with_size = [(partitioned_pcd, len(partitioned_pcds)) for partitioned_pcd in partitioned_pcds]
+        partitioned_pcds_with_size.sort(key=lambda x: x[-1], reverse=True)
+
+        return [partitioned_pcd for partitioned_pcd, size in partitioned_pcds]
 
     def eight_axis_partition(self):
         print(f"{self.raw_dataset.file_name} is partitioning by 8-axis now.")
@@ -86,13 +98,13 @@ class Partition:
 
     def statistics(self):
         with open(PROJECT_ROOT / f'data/partitioned/statistics_{self.partition_type}.txt', 'w') as file:
-            file.write(f"partial_points cloud {self.partition_type} ({len(self.full_partial_pcds)}, x, 3)")
+            file.write(f"xy_p xy_n yz_p yz_n zx_p zx_n\n")
 
             for index, partial_pcd in enumerate(self.full_partial_pcds, start=1):
                 file.write(f"{len(partial_pcd)} ")
 
                 if index % 6 == 0:
-                    file.write("/n")
+                    file.write("\n")
 
     def six_plain_partition(self):
         print(f"{self.raw_dataset.file_name} is partitioning by 6-plain now.")

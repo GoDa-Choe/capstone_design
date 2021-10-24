@@ -1,10 +1,6 @@
-import h5py
-import numpy as np
+a = [[1], [2, 2], [3, 3, 3]]
 
-file_path = '../data/raw/MVP_Train_CP.h5'
-input_file = h5py.File(file_path, 'r')
-
-print(input_file.attrs.keys())
-for attr in input_file.attrs:
-    print(attr)
-print(input_file['incomplete_pcds'].attrs.keys())
+b = [(array, len(array)) for array in a]
+b.sort(key=lambda x: x[-1], reverse=True)
+c = [array for array, size in b]
+print(c)
