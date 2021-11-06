@@ -2,6 +2,8 @@
 
 data/raw
 data/partitioned
+data/occluded
+data/occluded_full
 trained_model/
 
 
