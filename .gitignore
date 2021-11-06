@@ -1,6 +1,7 @@
 ####
 
-data/raw/
+data/raw
+data/partitioned
 trained_model/
 
 
