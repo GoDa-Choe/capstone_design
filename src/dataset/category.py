@@ -1,0 +1,18 @@
+CATEGORY = {
+    0: "airplane",
+    1: "cabinet",
+    2: "car",
+    3: "chair",
+    4: "lamp",
+    5: "sofa",
+    6: "table",
+    7: "watercraft",
+    8: "bed",
+    9: "bench",
+    10: "bookshelf",
+    11: "bus",
+    12: "guitar",
+    13: "motorbike",
+    14: "pistol",
+    15: "skateboard",
+}

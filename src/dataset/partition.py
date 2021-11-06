@@ -1,73 +1,86 @@
 import h5py
 import numpy as np
 from pathlib import Path
-import torch
-from matplotlib import pyplot
 from tqdm import tqdm
+import random
+import time
 
-PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design")
+PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 
-# noinspection SpellCheckingInspection
 class RawDatasetLoader:
-    def __init__(self, file_name: str, num_points, out_directory):
+    def __init__(self, file_name: str):
         self.file_name = file_name
-        self.num_points = num_points
-
         self.input_file = self.load()
 
         self.incomplete_pcds = self.input_file['incomplete_pcds']  # (62400, 2048, 3)
-        self.complete_pcds = np.repeat(self.input_file['complete_pcds'], 26, axis=0)  # (62400, 2048, 3)
+        self.complete_pcds = self.input_file['complete_pcds']  # (2400, 2048, 3)
         self.labels = self.input_file['labels']  # (62400,)
 
     def load(self, directory="data/raw/"):
         file_path = PROJECT_ROOT / directory / self.file_name
         input_file = h5py.File(file_path, 'r')
-        print(f"{self.file_name} was loaded.")
+        print(f"{self.file_name} was loaded.\n")
         return input_file
 
-    @staticmethod
-    def draw_plot(*args, complete, label):
-        fig = pyplot.figure(figsize=(30, 30))
-        for i, points in enumerate(args, 1):
-            if points.ndim == 2:
-                sub = fig.add_subplot(3, 3, i, projection="3d")
-                sub.scatter(points[:, 0], points[:, 2], points[:, 1], c='royalblue')
-
-        sub = fig.add_subplot(3, 3, 9, projection="3d")
-        sub.scatter(complete[:, 0], complete[:, 2], complete[:, 1], c='royalblue')
-        pyplot.title(label, fontdict={"fontsize": 50})
-        pyplot.show()
+    def close(self):
+        self.input_file.close()
 
 
-# noinspection SpellCheckingInspection,DuplicatedCode,PyChainedComparisons
 class Partition:
-    def __init__(self, raw_dataset: RawDatasetLoader, partition_type="6-plain",
-                 select_num: int = 3, num_points: int = 3):
+    def __init__(self, raw_dataset: RawDatasetLoader, partition_type="8-axis",
+                 num_select: int = 1, num_points: int = 200):
         self.raw_dataset = raw_dataset
-        self.partition_type = partition_type
 
-        self.select_num = select_num
+        self.partition_type = partition_type
+        if self.partition_type == "8-axis":
+            self.num_partition = 8
+        else:
+            self.num_partition = 6
+
+        self.num_select = num_select
         self.num_points = num_points
 
-        complete_pcds = np.repeat(self.raw_dataset.complete_pcds, 6, axis=0)
-        labels = np.repeat(self.raw_dataset.labels, 6, axis=0)
+        self.complete_pcds = np.repeat(self.raw_dataset.complete_pcds, 26 * self.num_select, axis=0)
+        self.labels = np.repeat(self.raw_dataset.labels, self.num_select, axis=0)
 
-        if partition_type == "6-plain":
-            self.full_partial_pcds = self.six_plain_partition()
+        if self.partition_type == "8-axis":
+            self.partitioned_pcds = self.eight_axis_partition()
         else:
-            self.full_partial_pcds = self.eight_axis_partition()
+            self.partitioned_pcds = self.six_plain_partition()
+        self.raw_dataset.close()
 
-    @staticmethod
-    def __select_among_partition(partitioned_pcds):
-        partitioned_pcds_with_size = [(partitioned_pcd, len(partitioned_pcds)) for partitioned_pcd in partitioned_pcds]
-        partitioned_pcds_with_size.sort(key=lambda x: x[-1], reverse=True)
+        self.occluded_pcds = self.select_pcds_sample_points(self.partitioned_pcds)
 
-        return [partitioned_pcd for partitioned_pcd, size in partitioned_pcds]
+    def sample_points(self, selected_pcds):
+        for i in range(len(selected_pcds)):
+            random.shuffle(selected_pcds[i])
+            selected_pcds[i] = selected_pcds[i][:self.num_points]
+
+    def select_pcds_sample_points(self, partitioned_pcds):
+
+        print(f"Partitioned_pcds is being selected and sampled...")
+        occluded_pcds = []
+        for i in tqdm(range(0, len(partitioned_pcds), 26 * self.num_partition)):
+            candidate_pcds = [partitioned_pcd for partitioned_pcd
+                              in self.partitioned_pcds[i:i + 26 * self.num_partition]
+                              if len(partitioned_pcd) >= self.num_points]
+
+            random.shuffle(candidate_pcds)
+            selected_pcds = candidate_pcds[:26 * self.num_select]
+            self.sample_points(selected_pcds)
+
+            occluded_pcds.extend(selected_pcds)
+
+        print(f"{len(partitioned_pcds)} -> {len(occluded_pcds)}")
+        print()
+        return occluded_pcds
 
     def eight_axis_partition(self):
-        print(f"{self.raw_dataset.file_name} is partitioning by 8-axis now.")
-        partial_pcds = []
+        print(f"{self.raw_dataset.file_name} is partitioning by 8-axis...")
+        time.sleep(0.1)
+
+        partitioned_pcds = []
         for incomplete_pcd in tqdm(self.raw_dataset.incomplete_pcds):
             ppp, npp, pnp, ppn, pnn, npn, nnp, nnn = [], [], [], [], [], [], [], []
             for point in incomplete_pcd:
@@ -89,25 +102,27 @@ class Partition:
                     nnn.append(point)
                 else:
                     print("fatal error detected!")
-            partial_pcds.extend((ppp, npp, pnp, ppn, pnn, npn, nnp, nnn))
+            partitioned_pcds.extend([ppp, npp, pnp, ppn, pnn, npn, nnp, nnn])
 
-        print(f"{self.raw_dataset.incomplete_pcds.shape} -> ({len(partial_pcds)}, x, 3)")
-        print(f"{self.raw_dataset.file_name} was partitionied by 8-axis.")
+        time.sleep(0.1)
+        print(f"{self.raw_dataset.incomplete_pcds.shape} -> ({len(partitioned_pcds)}, x, 3)\n")
 
-        return partial_pcds
+        return partitioned_pcds
 
     def statistics(self):
         with open(PROJECT_ROOT / f'data/partitioned/statistics_{self.partition_type}.txt', 'w') as file:
             file.write(f"xy_p xy_n yz_p yz_n zx_p zx_n\n")
 
-            for index, partial_pcd in enumerate(self.full_partial_pcds, start=1):
+            for index, partial_pcd in enumerate(self.partitioned_pcds, start=1):
                 file.write(f"{len(partial_pcd)} ")
 
                 if index % 6 == 0:
                     file.write("\n")
 
     def six_plain_partition(self):
-        print(f"{self.raw_dataset.file_name} is partitioning by 6-plain now.")
+        print(f"{self.raw_dataset.file_name} is partitioning by 6-plain...")
+        time.sleep(0.1)
+
         partial_pcds = []
         for incomplete_pcd in tqdm(self.raw_dataset.incomplete_pcds):
             xy_p, xy_n, yz_p, yz_n, zx_p, zx_n = [], [], [], [], [], []
@@ -129,17 +144,30 @@ class Partition:
 
             partial_pcds.extend((xy_p, xy_n, yz_p, yz_n, zx_p, zx_n))
 
-        print(f"{self.raw_dataset.incomplete_pcds.shape} -> ({len(partial_pcds)}, x, 3)")
-        print(f"{self.raw_dataset.file_name} was partitionied by 6-plain.")
+        time.sleep(0.1)
+        print(f"{self.raw_dataset.incomplete_pcds.shape} -> ({len(partial_pcds)}, x, 3)\n")
         return partial_pcds
+
+    def save(self, directory=None, file_name=None):
+        if directory is None:
+            directory = 'partitioned'
+        file_path = PROJECT_ROOT / 'data' / directory
+
+        if file_name is None:
+            file_name = f"{self.partition_type}_Partitioned_{self.raw_dataset.file_name}"
+        output_file = h5py.File(file_path / file_name, 'w')
+
+        output_file.create_dataset('incomplete_pcds', data=self.occluded_pcds)
+        output_file.create_dataset('complete_pcds', data=self.complete_pcds)
+        output_file.create_dataset('labels', data=self.labels)
+        output_file.close()
+
+        print(f"{file_name} was successfully saved at {file_path}.\n")
 
 
 if __name__ == "__main__":
-    temp = RawDatasetLoader(file_name="MVP_Train_CP.h5", num_points=1000, out_directory="temp")
-    print(temp.incomplete_pcds.shape)
-    print(temp.complete_pcds.shape)
-    print(temp.labels.shape)
-    print("-----------")
+    # raw = RawDatasetLoader(file_name="MVP_Train_CP.h5")
+    raw = RawDatasetLoader(file_name="MVP_Test_CP.h5")
 
-    partial = Partition(temp, partition_type="6-plain")
-    partial.statistics()
+    partition = Partition(raw, partition_type="8-axis", num_select=1, num_points=200)
+    partition.save()
