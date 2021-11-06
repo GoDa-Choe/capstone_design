@@ -17,13 +17,19 @@ def logging(file, epoch, train_result, test_result):
     def category_log_line_for_monitor(category_correct, category_count):
         log = ""
         for i in range(len(category_correct)):
-            log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f}  "
+            if category_count[i] == 0:  # for reduced MVP12 zero division error exception
+                log += f"{CATEGORY[i]}-{0:.2f}  "
+            else:
+                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f}  "
         return log
 
     def category_log_line(category_correct, category_count):
         log = ""
         for i in range(len(category_correct)):
-            log += f"{category_correct[i] / category_count[i]:.2f} "
+            if category_count[i] == 0:  # for reduced MVP12 zero division error exception
+                log += f"{0:.2f} "
+            else:
+                log += f"{category_correct[i] / category_count[i]:.2f} "
         return log
 
     total_test_result = test_result[:3]

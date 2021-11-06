@@ -1,0 +1,2 @@
+Epoch Train_Loss Test_Loss
+0 0.017858 0.010456

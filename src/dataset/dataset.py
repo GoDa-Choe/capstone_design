@@ -16,7 +16,7 @@ data
      ├── incomplete_pcds (59800, 2048, 3)
      └── labels (59800,)
 
-for details data_structure.md
+for details MVP_data_structure.md
 
 """
 import random
@@ -30,7 +30,10 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 
 class MVP(torch.utils.data.Dataset):
-    def __init__(self, is_train=True, shape_type: str = "complete",
+    def __init__(self,
+                 is_train=True,
+                 is_reduced=True,
+                 shape_type: str = "complete",
                  *, partition_type: str = '8-axis',
                  root='./data/'):
         """
@@ -40,20 +43,7 @@ class MVP(torch.utils.data.Dataset):
         self.root = PROJECT_ROOT / root
         self.shape_type = shape_type
 
-        if self.shape_type == "occluded":
-            self.directory = self.root / 'partitioned'
-            if is_train:
-                self.file_path = self.directory / f"{partition_type}_Partitioned_MVP_Train_CP.h5"
-            else:
-                self.file_path = self.directory / f"{partition_type}_Partitioned_MVP_Train_CP.h5"
-
-        else:  # not occluded
-            self.directory = self.root / 'raw'
-
-            if is_train:
-                self.file_path = self.directory / 'MVP_Train_CP.h5'
-            else:
-                self.file_path = self.directory / 'MVP_Test_CP.h5'
+        self.file_path = self.parsing_file_path(is_train, is_reduced, partition_type)
 
         input_file = h5py.File(self.file_path, 'r')
 
@@ -65,7 +55,7 @@ class MVP(torch.utils.data.Dataset):
         else:  # shape_type == "incomplete" or "occluded"
             self.input_data = np.array(input_file['incomplete_pcds'])  # dim: (62400, 2048, 3)
             self.labels = np.array(input_file['labels'])
-            if shape_type == "incomplete":
+            if shape_type == "partial":
                 self.ground_truth_data = np.repeat(input_file['complete_pcds'], 26, axis=0)
             else:  # shape_type == "occluded"
                 self.ground_truth_data = np.array(input_file['complete_pcds'])
@@ -73,6 +63,38 @@ class MVP(torch.utils.data.Dataset):
         self.len = self.input_data.shape[0]
 
         input_file.close()
+
+    def parsing_file_path(self, is_train, is_reduced, partition_type):
+        if self.shape_type == "occluded":
+            directory = self.root / 'partitioned'
+            if is_reduced:
+                if is_train:
+                    file_path = directory / f"{partition_type}_Partitioned_Reduced_MVP12_Train_CP.h5"
+                else:
+                    file_path = directory / f"{partition_type}_Partitioned_Reduced_MVP12_Test_CP.h5"
+
+            else:
+                if is_train:
+                    file_path = directory / f"{partition_type}_Partitioned_MVP_Train_CP.h5"
+                else:
+                    file_path = directory / f"{partition_type}_Partitioned_MVP_Train_CP.h5"
+
+        else:  # not occluded
+            if is_reduced:
+                directory = self.root / 'reduced'
+                if is_train:
+                    file_path = directory / 'Reduced_MVP12_Train_CP.h5'
+                else:
+                    file_path = directory / 'Reduced_MVP12_Test_CP.h5'
+
+            else:
+                directory = self.root / 'raw'
+                if is_train:
+                    file_path = directory / 'MVP_Train_CP.h5'
+                else:
+                    file_path = directory / 'MVP_Test_CP.h5'
+
+        return file_path
 
     def __len__(self):
         return self.len
@@ -88,31 +110,18 @@ class MVP(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    partial_train_dataset = MVP(
-        shape_type="partial",
+    test_dataset = MVP(
         is_train=True,
-        root='./data/')
+        is_reduced=True,
+        shape_type="complete",
+        partition_type='8-axis')
 
-    partial_train_loader = torch.utils.data.DataLoader(
-        dataset=partial_train_dataset,
-        batch_size=32,
-        shuffle=True,
-        # num_workers=NUM_WORKERS
+    test_loader = torch.utils.data.DataLoader(
+        dataset=test_dataset,
+        batch_size=1300,
+        shuffle=False,
+        num_workers=4
     )
 
-    print(len(partial_train_dataset.labels))
-    print(len(partial_train_dataset.input_data))
-    #
-    # print(complete_train_dataset[2399][0])
-    # print(complete_train_dataset[2399][1])
-    #
-    # for i in range(len(complete_train_dataset)):
-    #     print(complete_train_dataset[i][-1])
-
-    for j, (points, labels) in enumerate(partial_train_loader):
-        print(points.shape)
-        print(labels.shape)
+    for point_clouds, labels, ground_truths in test_loader:
         print(labels)
-
-        print(points[1])
-        break

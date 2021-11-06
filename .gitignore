@@ -4,6 +4,8 @@ data/raw
 data/partitioned
 data/occluded
 data/occluded_full
+data/reduced
+
 pretrained_weights/
 
 

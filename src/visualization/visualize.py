@@ -1,17 +1,12 @@
 import h5py
-import numpy as np
 from pathlib import Path
-import torch
 from matplotlib import pyplot as plt
-from tqdm import tqdm
-import random
-import time
 
 from src.dataset.category import CATEGORY
 
 PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
-INDEX = 26
+INDEX = 10426
 
 
 def visualization(input_file, index):
@@ -33,7 +28,7 @@ def visualization(input_file, index):
 
 if __name__ == "__main__":
     file_path = PROJECT_ROOT / 'data' / 'partitioned'
-    file_name = '8-axis_Partitioned_MVP_Train_CP.h5'
+    file_name = '8-axis_Partitioned_Reduced_MVP12_Train_CP.h5'
 
     input_file = h5py.File(file_path / file_name, 'r')
     visualization(input_file, INDEX)

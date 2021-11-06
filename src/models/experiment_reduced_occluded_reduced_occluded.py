@@ -2,14 +2,14 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-from pointnet import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 
+from pointnet import PointNetCls, feature_transform_regularizer
 from src.dataset.dataset import MVP
-from src.dataset.category import CATEGORY
 from src.utils.log import get_log_file, logging
 from src.utils.weights import get_trained_model_directory, save_trained_model
 
+from tqdm import tqdm
 import datetime
 from pathlib import Path
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 
 #####
-NUM_POINTS = 200
+NUM_POINTS = 100
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 100
@@ -121,11 +121,13 @@ def evaluate(model, test_loader):
 if __name__ == "__main__":
     train_dataset = MVP(
         is_train=True,
+        is_reduced=True,
         shape_type="occluded",
         partition_type='8-axis')
 
     test_dataset = MVP(
         is_train=False,
+        is_reduced=True,
         shape_type="occluded",
         partition_type='8-axis')
 
@@ -153,10 +155,11 @@ if __name__ == "__main__":
     optimizer = optim.Adam(discriminator.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    log_file = get_log_file(train_shape="occluded", test_shape="occluded")
-    pretrained_weights_directory = get_trained_model_directory(train_shape="occluded", test_shape="occluded")
+    log_file = get_log_file(train_shape="reduced_occluded", test_shape="reduced_occluded")
+    pretrained_weights_directory = get_trained_model_directory(train_shape="reduced_occluded",
+                                                               test_shape="reduced_occluded")
 
-    for epoch in range(NUM_EPOCH):
+    for epoch in tqdm(range(NUM_EPOCH)):
         train_result = train(model=discriminator, lr_schedule=scheduler,
                              train_loader=train_loader, pretrained_weights_directory=pretrained_weights_directory)
         test_result = evaluate(model=discriminator, test_loader=test_loader)

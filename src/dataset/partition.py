@@ -9,15 +9,16 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 
 class RawDatasetLoader:
-    def __init__(self, file_name: str):
+    def __init__(self, file_name: str, directory="data/raw/"):
         self.file_name = file_name
-        self.input_file = self.load()
+        self.directory = directory
+        self.input_file = self.load(self.directory)
 
         self.incomplete_pcds = self.input_file['incomplete_pcds']  # (62400, 2048, 3)
         self.complete_pcds = self.input_file['complete_pcds']  # (2400, 2048, 3)
         self.labels = self.input_file['labels']  # (62400,)
 
-    def load(self, directory="data/raw/"):
+    def load(self, directory):
         file_path = PROJECT_ROOT / directory / self.file_name
         input_file = h5py.File(file_path, 'r')
         print(f"{self.file_name} was loaded.\n")
@@ -167,7 +168,9 @@ class Partition:
 
 if __name__ == "__main__":
     # raw = RawDatasetLoader(file_name="MVP_Train_CP.h5")
-    raw = RawDatasetLoader(file_name="MVP_Test_CP.h5")
+    # raw = RawDatasetLoader(file_name="MVP_Test_CP.h5")
+    # raw = RawDatasetLoader(file_name="Reduced_MVP12_Train_CP.h5", directory="data/reduced/")
+    raw = RawDatasetLoader(file_name="Reduced_MVP12_Test_CP.h5", directory="data/reduced/")
 
-    partition = Partition(raw, partition_type="8-axis", num_select=1, num_points=200)
+    partition = Partition(raw, partition_type="8-axis", num_select=1, num_points=100)
     partition.save()
