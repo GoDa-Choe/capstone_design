@@ -24,7 +24,7 @@ from pathlib import Path
 
 
 #####
-NUM_POINTS = 2048
+NUM_POINTS = 1024
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 FEATURE_TRANSFORM = True
@@ -38,8 +38,8 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 PRETRAINED_WEIGHTS = True
 PRETRAINED_WEIGHTS_DIRECTORY = PROJECT_ROOT / "pretrained_weights"
 
-GENERATOR_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_2048/20211107_052634/99.pth"
-DISCRIMINATOR_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "reduced_complete_reduced_complete/20211107_040223/99.pth"
+GENERATOR_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_1024/20211108_101749/170.pth"
+DISCRIMINATOR_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "reduced_complete_reduced_complete/20211108_072210/170.pth"
 
 
 #####
@@ -58,6 +58,11 @@ def evaluate(generator, discriminator, test_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader)):
+            if NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
+
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
@@ -103,7 +108,7 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoder(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
     discriminator = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
 
     # for pretrained model

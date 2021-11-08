@@ -2,7 +2,7 @@ import torch
 import torch.nn.parallel
 import torch.utils.data
 
-from auto_encoder import AutoEncoder, feature_transform_regularizer
+from auto_encoder import AutoEncoder, AutoEncoderLight, feature_transform_regularizer
 from chamfer_distance import distChamfer
 from src.dataset.dataset import MVP
 from src.utils.log_for_auto_encoder import get_log_file, logging
@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 #####
-NUM_POINTS = 2048
+NUM_POINTS = 1024
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 FEATURE_TRANSFORM = True
@@ -34,7 +34,7 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 PRETRAINED_WEIGHTS = True
 PRETRAINED_WEIGHTS_DIRECTORY = PROJECT_ROOT / "pretrained_weights"
-PRETRAINED_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_2048/20211107_052634/99.pth"
+PRETRAINED_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_1024/20211108_101749/170.pth"
 
 
 #####
@@ -47,6 +47,11 @@ def evaluate(model, test_loader):
     model.eval()
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader)):
+            if NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
+
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
@@ -55,8 +60,8 @@ def evaluate(model, test_loader):
             vector = vector.view(-1, NUM_POINTS, 3)
 
             # for visualization
-            # if batch_index % 100 == 0:
-            if False:
+            if batch_index % 100 == 0:
+                # if False:
                 generated = vector[0].cpu().detach().numpy()
                 ground_truth = ground_truths[0].cpu().detach().numpy()
                 label = labels[0].cpu().detach().item()
@@ -65,8 +70,8 @@ def evaluate(model, test_loader):
 
             # Todo 2. Chamfer Distance Loss
             dist1, dist2, _, _ = distChamfer(vector, ground_truths)
-
-            loss = torch.sum(dist1) + torch.sum(dist2)
+            dist1, dist2, _, _ = distChamfer(vector, ground_truths)
+            loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
 
             if FEATURE_TRANSFORM:  # for regularization
                 loss += feature_transform_regularizer(trans_feat) * 0.001
@@ -91,7 +96,7 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoder(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
 
     # for pretrained model
     if PRETRAINED_WEIGHTS:

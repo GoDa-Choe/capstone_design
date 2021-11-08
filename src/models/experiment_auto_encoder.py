@@ -77,8 +77,7 @@ def train(model, lr_schedule, train_loader, pretrained_weights_directory):
 
         # Todo 1. Chamfer Distance Loss
         dist1, dist2, _, _ = distChamfer(vector, ground_truths)
-
-        loss = torch.sum(dist1) + torch.sum(dist2)
+        loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
 
         if FEATURE_TRANSFORM:  # for regularization
             loss += feature_transform_regularizer(trans_feat) * 0.001
@@ -118,8 +117,7 @@ def evaluate(model, test_loader):
 
             # Todo 2. Chamfer Distance Loss
             dist1, dist2, _, _ = distChamfer(vector, ground_truths)
-
-            loss = torch.sum(dist1) + torch.sum(dist2)
+            loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
 
             if FEATURE_TRANSFORM:  # for regularization
                 loss += feature_transform_regularizer(trans_feat) * 0.001

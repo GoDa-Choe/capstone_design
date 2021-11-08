@@ -10,7 +10,7 @@ def blue(text):
 
 def logging(file, epoch, train_result, test_result):
     def log_line(loss, count):
-        return f"{loss / count:.6f}"
+        return f"{loss / count * 10000:.6f}"
 
     train_log = log_line(*train_result)
     test_log = log_line(*test_result)
