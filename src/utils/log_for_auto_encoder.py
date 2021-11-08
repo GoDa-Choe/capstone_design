@@ -16,8 +16,9 @@ def logging(file, epoch, train_result, test_result):
     test_log = log_line(*test_result)
 
     print(epoch, train_log, blue(test_log))
-    log = f"{epoch} {train_log} {test_log}\n"
-    file.write(log)
+    if file:
+        log = f"{epoch} {train_log} {test_log}\n"
+        file.write(log)
 
 
 def get_log_file(num_point):

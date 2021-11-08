@@ -42,8 +42,10 @@ def logging(file, epoch, train_result, test_result):
     category_test_log_for_monitor = category_log_line_for_monitor(*category_test_result)
 
     print(epoch, train_log, blue(total_test_log), category_test_log_for_monitor)
-    log = f"{epoch} {train_log} {total_test_log} {category_test_log}\n"
-    file.write(log)
+
+    if file:
+        log = f"{epoch} {train_log} {total_test_log} {category_test_log}\n"
+        file.write(log)
 
 
 def get_log_file(train_shape: str, test_shape: str):

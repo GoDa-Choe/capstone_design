@@ -24,13 +24,13 @@ from pathlib import Path
 NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
-NUM_EPOCH = 100
+NUM_EPOCH = 200
 FEATURE_TRANSFORM = True
 
 LEARNING_RATE = 0.001
 BETAS = (0.9, 0.999)
 
-STEP_SIZE = 20
+STEP_SIZE = 40
 GAMMA = 0.5
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -41,8 +41,12 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 ONLY_TEST = False
 
-PRETRAINED_WEIGHTS = None
 TRAINED_MODEL_PATH = PROJECT_ROOT / ""
+
+PRETRAINED_WEIGHTS = True
+PRETRAINED_WEIGHTS_DIRECTORY = PROJECT_ROOT / "pretrained_weights"
+
+AUTO_ENCODER_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_2048/20211107_052634/99.pth"
 
 
 #####
@@ -54,7 +58,7 @@ def train(model, lr_schedule, train_loader, pretrained_weights_directory):
 
     model.train()
 
-    for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader):
+    for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(train_loader)):
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
@@ -144,7 +148,7 @@ if __name__ == "__main__":
 
     # for pretrained model
     if PRETRAINED_WEIGHTS:
-        generator.load_state_dict(torch.load(TRAINED_MODEL_PATH))
+        generator.load_state_dict(torch.load(AUTO_ENCODER_WEIGHTS_PATH))
     generator.to(device=DEVICE)
 
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)
@@ -153,7 +157,7 @@ if __name__ == "__main__":
     log_file = get_log_file(NUM_POINTS)
     pretrained_weights_directory = get_trained_model_directory(NUM_POINTS)
 
-    for epoch in tqdm(range(NUM_EPOCH)):
+    for epoch in range(NUM_EPOCH):
         train_result = train(model=generator, lr_schedule=scheduler,
                              train_loader=train_loader, pretrained_weights_directory=pretrained_weights_directory)
         test_result = evaluate(model=generator, test_loader=test_loader)
