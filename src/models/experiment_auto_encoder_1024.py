@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from auto_encoder import AutoEncoder, AutoEncoderLight, feature_transform_regularizer
+from auto_encoder import AutoEncoder, feature_transform_regularizer
 from chamfer_distance import distChamfer
 from src.dataset.dataset import MVP
 from src.utils.log_for_auto_encoder import get_log_file, logging
@@ -21,10 +21,10 @@ from pathlib import Path
 
 
 #####
-NUM_POINTS = 1024
+NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
-NUM_EPOCH = 300
+NUM_EPOCH = 200
 FEATURE_TRANSFORM = True
 
 LEARNING_RATE = 0.001
@@ -43,7 +43,7 @@ ONLY_TEST = False
 
 TRAINED_MODEL_PATH = PROJECT_ROOT / ""
 
-PRETRAINED_WEIGHTS = False
+PRETRAINED_WEIGHTS = True
 PRETRAINED_WEIGHTS_DIRECTORY = PROJECT_ROOT / "pretrained_weights"
 
 AUTO_ENCODER_WEIGHTS_PATH = PRETRAINED_WEIGHTS_DIRECTORY / "auto_encoder_2048/20211107_052634/99.pth"
@@ -58,13 +58,7 @@ def train(model, lr_schedule, train_loader, pretrained_weights_directory):
 
     model.train()
 
-    for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader):
-
-        # sampling
-        if NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
+    for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(train_loader)):
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
@@ -103,12 +97,6 @@ def evaluate(model, test_loader):
     model.eval()
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(test_loader):
-            # sampling
-            if NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
-
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
@@ -156,7 +144,7 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = AutoEncoder(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
 
     # for pretrained model
     if PRETRAINED_WEIGHTS:
@@ -169,7 +157,7 @@ if __name__ == "__main__":
     log_file = get_log_file(NUM_POINTS)
     pretrained_weights_directory = get_trained_model_directory(NUM_POINTS)
 
-    for epoch in tqdm(range(NUM_EPOCH)):
+    for epoch in range(NUM_EPOCH):
         train_result = train(model=generator, lr_schedule=scheduler,
                              train_loader=train_loader, pretrained_weights_directory=pretrained_weights_directory)
         test_result = evaluate(model=generator, test_loader=test_loader)
