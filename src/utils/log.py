@@ -18,7 +18,7 @@ def logging_for_test(test_result):
         log = ""
         for i in range(len(category_correct)):
             if category_count[i] == 0:  # for reduced MVP12 zero division error exception
-                log += f"{CATEGORY[i]}-None  "
+                log += f"None "
             else:
                 log += f"{category_correct[i] / category_count[i]:.2f} "
         return log
@@ -27,9 +27,9 @@ def logging_for_test(test_result):
         log = ""
         for i in range(len(category_correct)):
             if category_count[i] == 0:  # for reduced MVP12 zero division error exception
-                log += f"{CATEGORY[i]}-None  "
+                log += f"{CATEGORY[i]}-None "
             else:
-                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f}  "
+                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f} "
         return log
 
     total_test_result = test_result[:4]
@@ -52,16 +52,16 @@ def logging_for_train(file, epoch, train_result, validation_result):
         log = ""
         for i in range(len(category_correct)):
             if category_count[i] == 0:  # for reduced MVP12 zero division error exception
-                log += f"{CATEGORY[i]}-None  "
+                log += f"{CATEGORY[i]}-None "
             else:
-                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f}  "
+                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f} "
         return log
 
     def category_log_line(category_correct, category_count):
         log = ""
         for i in range(len(category_correct)):
             if category_count[i] == 0:  # for reduced MVP12 zero division error exception
-                log += f"{CATEGORY[i]}-None  "
+                log += f"None "
             else:
                 log += f"{category_correct[i] / category_count[i]:.2f} "
         return log
@@ -90,7 +90,7 @@ def logging(file, epoch, train_result, test_result):
         log = ""
         for i in range(len(category_correct)):
             if category_count[i] == 0:  # for reduced MVP12 zero division error exception
-                log += f"{CATEGORY[i]}-{0:.2f}  "
+                log += f"{CATEGORY[i]}-{0:.2f} "
             else:
                 log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f}  "
         return log

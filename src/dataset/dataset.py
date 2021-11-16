@@ -102,6 +102,72 @@ class MVP(torch.utils.data.Dataset):
         return input_data, label, ground_truth
 
 
+class Partitioned_MVP(torch.utils.data.Dataset):
+    def __init__(self,
+                 dataset_type: str = "train",
+                 pcd_type: str = "occluded",
+                 *,
+                 root='data/partitioned_mvp/'):
+        """
+        :param dataset_type: train/validation/test
+        :param pcd_type: occluded-only
+        """
+        self.dataset_type = dataset_type
+        self.pcd_type = pcd_type
+
+        self.root = root
+        self.file_path = self.parsing_file_path()
+
+        self.input_data, self.labels, self.ground_truth_data = self.read_dataset()
+
+        self.len = self.input_data.shape[0]
+
+    def parsing_file_path(self):
+        file_path = PROJECT_ROOT / self.root
+        if self.dataset_type == "train":
+            file_path = file_path / "Partitioned_MVP_Train.h5"
+
+        elif self.dataset_type == "validation":
+            file_path = file_path / "Partitioned_MVP_Validation.h5"
+        else:
+            file_path = file_path / "Partitioned_MVP_Test.h5"
+
+        return file_path
+
+    def read_dataset(self):
+        input_file = h5py.File(self.file_path, 'r')
+
+        if self.dataset_type != "test":
+            input_data = np.array(input_file['incomplete_pcds'])
+            labels = np.array(input_file['labels'])
+            ground_truth_data = np.array(input_file['complete_pcds'])
+
+        else:  # self.dataset_type == "test"
+            input_data = np.array(input_file['incomplete_pcds'])
+            labels = np.array(input_file['labels']).squeeze()
+            ground_truth_data = None
+
+        input_file.close()
+
+        return input_data, labels, ground_truth_data
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, index):
+        input_data = torch.from_numpy(self.input_data[index])
+
+        if self.ground_truth_data is not None:
+            ground_truth = torch.from_numpy(self.ground_truth_data[index])
+        else:
+            ground_truth = torch.empty(1)
+
+        label = torch.from_numpy(np.array(self.labels[index].astype('int64')))
+
+        # return input_data, label, ground_truth
+        return input_data, label, ground_truth
+
+
 class MVP_TEMP(torch.utils.data.Dataset):
     def __init__(self,
                  is_train=True,
@@ -183,46 +249,26 @@ class MVP_TEMP(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    train_dataset = MVP(
-        dataset_type="train",
-        pcd_type="complete")
+    train_dataset = Partitioned_MVP(
+        dataset_type="train")
 
-    print(train_dataset.input_data.shape)  # (2400, 2048, 3)
-    print(train_dataset.labels.shape)  # (2400,)
-    print(train_dataset.ground_truth_data)  # None
-    print()
-
-    train_dataset = MVP(
-        dataset_type="train",
-        pcd_type="incomplete")
-
-    print(train_dataset.input_data.shape)  # (62400, 2048, 3)
+    print(train_dataset.input_data.shape)  # (62400, 100, 3)
     print(train_dataset.labels.shape)  # (62400,)
     print(train_dataset.ground_truth_data.shape)  # (62400, 2048, 3)
     print()
 
-    validation_dataset = MVP(
-        dataset_type="validation",
-        pcd_type="complete")
+    validation_dataset = Partitioned_MVP(
+        dataset_type="validation")
 
-    print(validation_dataset.input_data.shape)  # (1600, 2048, 3)
-    print(validation_dataset.labels.shape)  # (1600,)
-    print(validation_dataset.ground_truth_data)  # None
-    print()
-
-    validation_dataset = MVP(
-        dataset_type="validation",
-        pcd_type="incomplete")
-
-    print(validation_dataset.input_data.shape)  # (41600, 2048, 3)
+    print(validation_dataset.input_data.shape)  # (41600, 100, 3)
     print(validation_dataset.labels.shape)  # (41600,)
     print(validation_dataset.ground_truth_data.shape)  # (41600, 2048, 3)
     print()
 
-    test_dataset = MVP(
+    test_dataset = Partitioned_MVP(
         dataset_type="test",
-        pcd_type="incomplete")
+        pcd_type="occluded")
 
-    print(test_dataset.input_data.shape)  # (59800, 2048, 3)
+    print(test_dataset.input_data.shape)  # (59800, 100, 3)
     print(test_dataset.labels.shape)  # (59800,)
     print(test_dataset.ground_truth_data)  # None

@@ -9,13 +9,15 @@ PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
 
 
 class RawDatasetLoader:
-    def __init__(self, file_name: str, directory="data/raw/"):
+    def __init__(self, file_name: str, for_test=False, directory="data/raw/"):
         self.file_name = file_name
+        self.for_test = for_test
         self.directory = directory
         self.input_file = self.load(self.directory)
 
         self.incomplete_pcds = self.input_file['incomplete_pcds']  # (62400, 2048, 3)
-        self.complete_pcds = self.input_file['complete_pcds']  # (2400, 2048, 3)
+        if not self.for_test:
+            self.complete_pcds = self.input_file['complete_pcds']  # (2400, 2048, 3)
         self.labels = self.input_file['labels']  # (62400,)
 
     def load(self, directory):
@@ -32,7 +34,6 @@ class Partition:
     def __init__(self, raw_dataset: RawDatasetLoader, partition_type="8-axis",
                  num_select: int = 1, num_points: int = 200):
         self.raw_dataset = raw_dataset
-
         self.partition_type = partition_type
         if self.partition_type == "8-axis":
             self.num_partition = 8
@@ -42,7 +43,8 @@ class Partition:
         self.num_select = num_select
         self.num_points = num_points
 
-        self.complete_pcds = np.repeat(self.raw_dataset.complete_pcds, 26 * self.num_select, axis=0)
+        if not self.raw_dataset.for_test:
+            self.complete_pcds = np.repeat(self.raw_dataset.complete_pcds, 26 * self.num_select, axis=0)
         self.labels = np.repeat(self.raw_dataset.labels, self.num_select, axis=0)
 
         if self.partition_type == "8-axis":
@@ -159,7 +161,9 @@ class Partition:
         output_file = h5py.File(file_path / file_name, 'w')
 
         output_file.create_dataset('incomplete_pcds', data=self.occluded_pcds)
-        output_file.create_dataset('complete_pcds', data=self.complete_pcds)
+
+        if not self.raw_dataset.for_test:
+            output_file.create_dataset('complete_pcds', data=self.complete_pcds)
         output_file.create_dataset('labels', data=self.labels)
         output_file.close()
 
@@ -170,7 +174,7 @@ if __name__ == "__main__":
     # raw = RawDatasetLoader(file_name="MVP_Train_CP.h5")
     # raw = RawDatasetLoader(file_name="MVP_Test_CP.h5")
     # raw = RawDatasetLoader(file_name="Reduced_MVP12_Train_CP.h5", directory="data/reduced/")
-    raw = RawDatasetLoader(file_name="Reduced_MVP12_Test_CP.h5", directory="data/reduced/")
+    raw = RawDatasetLoader(file_name="MVP_Test.h5", directory="data/mvp/", for_test=True)
 
     partition = Partition(raw, partition_type="8-axis", num_select=1, num_points=100)
-    partition.save()
+    partition.save(directory='partitioned_mvp', file_name="Partitioned_MVP_Test.h5")

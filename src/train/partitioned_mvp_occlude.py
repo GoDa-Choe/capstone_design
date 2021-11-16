@@ -4,22 +4,16 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.dataset.dataset import MVP
+from src.dataset.dataset import Partitioned_MVP
 from src.models.pointnet import PointNetCls, feature_transform_regularizer
 from src.utils.log import get_log_file, logging_for_train
 from src.utils.weights import get_trained_model_directory, save_trained_model
 
 from tqdm import tqdm
 import datetime
-from pathlib import Path
-
-# Todo 1. scheduler check
-# Todo 2. transformation network check
-# Todo 3. Saving trained network
-
 
 #####
-THRESHOLD = 15
+THRESHOLD = 10
 
 NUM_POINTS = 100
 BATCH_SIZE = 32
@@ -37,12 +31,6 @@ GAMMA = 0.5
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 NUM_WORKERS = 20
 
-PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
-# RESULT_LOG_ROOT = PROJECT_ROOT / 'result'
-
-PRETRAINED_WEIGHTS = None
-TRAINED_WEIGHTS_ROOT = PROJECT_ROOT / ""
-
 
 #####
 
@@ -55,12 +43,6 @@ def train(model, train_loader, lr_schedule):
     model.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
-
-        # sampling
-        if NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
@@ -97,11 +79,6 @@ def evaluate(model, test_loader):
     model.eval()
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(test_loader, start=1):
-            # sampling
-            if NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
 
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
@@ -129,13 +106,13 @@ def evaluate(model, test_loader):
 
 
 if __name__ == "__main__":
-    train_dataset = MVP(
+    train_dataset = Partitioned_MVP(
         dataset_type="train",
-        pcd_type="complete")
+        pcd_type="occluded")
 
-    validation_dataset = MVP(
+    validation_dataset = Partitioned_MVP(
         dataset_type="validation",
-        pcd_type="complete")
+        pcd_type="occluded")
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -156,8 +133,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(classifier.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    log_file = get_log_file(experiment_type="train", dataset_type="mvp", train_shape="complete")
-    weights_directory = get_trained_model_directory(dataset_type="mvp", train_shape="complete")
+    log_file = get_log_file(experiment_type="train", dataset_type="partitioned_mvp", train_shape="occluded")
+    weights_directory = get_trained_model_directory(dataset_type="partitioned_mvp", train_shape="occluded")
 
     min_loss = float("inf")
     count = 0
