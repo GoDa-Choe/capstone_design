@@ -111,7 +111,7 @@ if __name__ == "__main__":
         pcd_type="occluded")
 
     validation_dataset = Partitioned_MVP(
-        dataset_type="validation",
+        dataset_type="test",
         pcd_type="occluded")
 
     train_loader = torch.utils.data.DataLoader(

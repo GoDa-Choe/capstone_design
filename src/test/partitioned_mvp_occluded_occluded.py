@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
 
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/partitioned_mvp/occluded/??/35.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/partitioned_mvp/occluded/20211117_030813/20.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
     classifier.to(device=DEVICE)
 
