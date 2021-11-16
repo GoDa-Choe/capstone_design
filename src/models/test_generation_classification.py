@@ -69,14 +69,19 @@ def evaluate(generator, discriminator, test_loader):
 
             vector, _, _ = generator(point_clouds)
 
-            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
 
+            # Todo 2. Chamfer Distance Loss
+            dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
+            cd_loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
+
+            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
             scores, trans, trans_feat = discriminator(generated_point_clouds)
 
-            loss = F.nll_loss(scores, labels)
+            ce_loss = F.nll_loss(scores, labels)
 
             if FEATURE_TRANSFORM:  # for regularization
-                loss += feature_transform_regularizer(trans_feat) * 0.001
+                loss = cd_loss * 100 + ce_loss + feature_transform_regularizer(trans_feat) * 0.001
             total_loss += loss
 
             _, predictions = torch.max(scores, 1)

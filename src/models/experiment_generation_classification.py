@@ -31,6 +31,8 @@ BATCH_SIZE = 32
 NUM_CLASSES = 16
 FEATURE_TRANSFORM = True
 
+ALPHA = 1
+
 LEARNING_RATE = 0.01
 BETAS = (0.9, 0.999)
 
@@ -56,28 +58,44 @@ def train(generator, discriminator, optimizer, lr_schedule, train_loader, pretra
     total_loss = 0.0
     total_correct = 0.0
     count = 0
+
+    total_cross_entropy = 0.0
     total_chamfer_distance = 0.0
 
     generator.train()
     # discriminator.eval()  # Todo 1. check required
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader):
+        if NUM_POINTS != 2024:
+            indices = torch.randperm(point_clouds.size()[1])
+            indices = indices[:NUM_POINTS]
+            point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
-        point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
+        point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
         optimizer.zero_grad()
 
-        vector, _, _ = generator(point_clouds)
+        # Todo 2. Chamfer Distance Loss
+        vector, _, trans_feat1 = generator(point_clouds)
+        generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
+        dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
+        cd_loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
+        if FEATURE_TRANSFORM:  # for regularization
+            cd_loss += feature_transform_regularizer(trans_feat1) * 0.001
+        total_chamfer_distance += cd_loss
+
+        # Todo 2. Cross Entropy Loss
         generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
-
-        scores, trans, trans_feat = discriminator(generated_point_clouds)
-
-        loss = F.nll_loss(scores, labels)
+        scores, _, trans_feat2 = discriminator(generated_point_clouds)
+        ce_loss = F.nll_loss(scores, labels)
 
         if FEATURE_TRANSFORM:  # for regularization
-            loss += feature_transform_regularizer(trans_feat) * 0.001
+            ce_loss += feature_transform_regularizer(trans_feat2) * 0.001
+        total_cross_entropy += ce_loss
+
+        loss = cd_loss * ALPHA * ce_loss
         total_loss += loss
         loss.backward()
         optimizer.step()
@@ -102,23 +120,42 @@ def evaluate(generator, discriminator, test_loader):
     category_correct = [0] * 16
     category_count = [0] * 16
 
+    total_cross_entropy = 0.0
+    total_chamfer_distance = 0.0
+
     generator.eval()
     discriminator.eval()
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(test_loader):
+            if NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
+
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, 2048, 3) -> (batch_size, 3, 2048)
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
-            vector, _, _ = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            # Todo 2. Chamfer Distance Loss
+            vector, _, trans_feat1 = generator(point_clouds)
+            generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
+            dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
+            cd_loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
+            if FEATURE_TRANSFORM:  # for regularization
+                cd_loss += feature_transform_regularizer(trans_feat1) * 0.001
+            total_chamfer_distance += cd_loss
 
-            scores, trans, trans_feat = discriminator(generated_point_clouds)
-            loss = F.nll_loss(scores, labels)
+            # Todo 2. Cross Entropy Loss
+            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            scores, _, trans_feat2 = discriminator(generated_point_clouds)
+            ce_loss = F.nll_loss(scores, labels)
 
             if FEATURE_TRANSFORM:  # for regularization
-                loss += feature_transform_regularizer(trans_feat) * 0.001
+                ce_loss += feature_transform_regularizer(trans_feat2) * 0.001
+            total_cross_entropy += ce_loss
+
+            loss = cd_loss * ALPHA * ce_loss
             total_loss += loss
 
             _, predictions = torch.max(scores, 1)
@@ -178,11 +215,11 @@ if __name__ == "__main__":
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    # log_file = get_log_file("generator", "discriminator")
-    # pretrained_weights_directory = get_trained_model_directory(f"{NUM_POINTS}_joint")
+    log_file = get_log_file("generator", "discriminator")
+    pretrained_weights_directory = get_trained_model_directory(f"{NUM_POINTS}_joint")
 
-    log_file = None
-    pretrained_weights_directory = None
+    # log_file = None
+    # pretrained_weights_directory = None
 
     for epoch in tqdm(range(NUM_EPOCH)):
         train_result = train(generator=generator, discriminator=discriminator,

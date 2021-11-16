@@ -2,14 +2,13 @@ import torch
 
 import os
 import datetime
-from pathlib import Path
 
-PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
+from src.utils.project_root import PROJECT_ROOT
 
 
-def get_trained_model_directory(train_shape: str, test_shape: str):
+def get_trained_model_directory(dataset_type, train_shape: str):
     now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    directory = PROJECT_ROOT / 'pretrained_weights' / f"{train_shape}_{test_shape}" / now
+    directory = PROJECT_ROOT / 'pretrained_weights' / dataset_type / train_shape / now
 
     try:
         os.makedirs(directory)
