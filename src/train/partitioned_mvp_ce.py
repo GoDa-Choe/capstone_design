@@ -4,22 +4,19 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.dataset.dataset import MVP
-from src.models.pointnet import PointNetCls, feature_transform_regularizer
-from src.utils.log import get_log_file, logging_for_train
-from src.utils.weights import get_trained_model_directory, save_trained_model
+from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
+from src.models.pointnet import PointNetCls
+
+from src.dataset.dataset import Partitioned_MVP
+from src.utils.log import get_log_for_auto_encoder, logging_for_train
+from src.utils.weights import get_trained_model_directory_for_auto_encoder, save_trained_model
 
 from tqdm import tqdm
 import datetime
-from pathlib import Path
-
-# Todo 1. scheduler check
-# Todo 2. transformation network check
-# Todo 3. Saving trained network
-
+from src.utils.project_root import PROJECT_ROOT
 
 #####
-THRESHOLD = 15
+THRESHOLD = 10
 
 NUM_POINTS = 1024
 BATCH_SIZE = 32
@@ -37,42 +34,38 @@ GAMMA = 0.5
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 NUM_WORKERS = 20
 
-PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
-# RESULT_LOG_ROOT = PROJECT_ROOT / 'result'
-
-PRETRAINED_WEIGHTS = None
-TRAINED_WEIGHTS_ROOT = PROJECT_ROOT / ""
-
 
 #####
 
 
-def train(model, train_loader, lr_schedule):
+def train(generator, classifier, train_loader, lr_schedule):
     total_loss = 0.0
+    total_ce_loss = 0.0
+    total_cd_loss = 0.0
+
     total_correct = 0.0
     total_count = 0
 
-    model.train()
+    generator.train()
+    classifier.eval()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
-
-        # sampling
-        if NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
         optimizer.zero_grad()
 
-        scores, trans, trans_feat = model(point_clouds)
+        vector, trans, trans_feat = generator(point_clouds)
+        generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+
+        scores, trans, trans_feat = classifier(generated_point_clouds)
+
         loss = F.nll_loss(scores, labels)
 
         if FEATURE_TRANSFORM:  # for regularization
             loss += feature_transform_regularizer(trans_feat) * 0.001
-        total_loss += loss.item()
+        total_ce_loss += loss.item()
         loss.backward()
 
         optimizer.step()
@@ -83,36 +76,39 @@ def train(model, train_loader, lr_schedule):
 
     lr_schedule.step()
 
-    return total_loss, batch_index, total_correct, total_count
+    return total_ce_loss, batch_index, total_correct, total_count
 
 
-def evaluate(model, test_loader):
+def evaluate(generator, classifier, validation_loader):
     total_loss = 0.0
+    total_ce_loss = 0.0
+    total_cd_loss = 0.0
+
     total_correct = 0.0
     total_count = 0
 
     category_correct = [0] * 16
     category_count = [0] * 16
 
-    model.eval()
+    generator.eval()
+    classifier.eval()
+
     with torch.no_grad():
-        for batch_index, (point_clouds, labels, ground_truths) in enumerate(test_loader, start=1):
-            # sampling
-            if NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+        for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
 
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            scores, trans, trans_feat = model(point_clouds)
+            vector, trans, trans_feat = generator(point_clouds)
+            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+
+            scores, trans, trans_feat = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
 
             # if FEATURE_TRANSFORM:  # for regularization
             #     loss += feature_transform_regularizer(trans_feat) * 0.001
 
-            total_loss += loss
+            total_ce_loss += loss
 
             _, predictions = torch.max(scores, 1)
             total_correct += (predictions == labels).sum().item()
@@ -125,17 +121,17 @@ def evaluate(model, test_loader):
                 category_correct[label] += corrects[i].item()
                 category_count[label] += 1
 
-    return total_loss, batch_index, total_correct, total_count, category_correct, category_count
+    return total_ce_loss, batch_index, total_correct, total_count, category_correct, category_count
 
 
 if __name__ == "__main__":
-    train_dataset = MVP(
+    train_dataset = Partitioned_MVP(
         dataset_type="train",
-        pcd_type="complete")
+        pcd_type="occluded")
 
-    validation_dataset = MVP(
+    validation_dataset = Partitioned_MVP(
         dataset_type="validation",
-        pcd_type="complete")
+        pcd_type="occluded")
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -150,20 +146,27 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
+    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"
+    classifier.load_state_dict(torch.load(WEIGHTS_PATH))
+
+    generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
 
     optimizer = optim.Adam(classifier.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    log_file = get_log_file(experiment_type="train", dataset_type="mvp", train_shape="complete")
-    weights_directory = get_trained_model_directory(dataset_type="mvp", train_shape="complete")
+    log_file = get_log_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="ce")
+    weights_directory = get_trained_model_directory_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="ce")
 
     min_loss = float("inf")
     count = 0
     for epoch in tqdm(range(NUM_EPOCH)):
-        train_result = train(model=classifier, train_loader=train_loader, lr_schedule=scheduler)
-        validation_result = evaluate(model=classifier, test_loader=validation_loader)
+        train_result = train(generator=generator, classifier=classifier, train_loader=train_loader,
+                             lr_schedule=scheduler)
+        validation_result = evaluate(generator=generator, classifier=classifier, validation_loader=validation_loader)
 
         if validation_result[0] < min_loss:
             save_trained_model(classifier, epoch, weights_directory)

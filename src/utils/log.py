@@ -143,3 +143,22 @@ def get_log_file(experiment_type: str, dataset_type: str, train_shape: str, vali
     print(index, end="")
 
     return file
+
+
+def get_log_for_auto_encoder(dataset_type: str, loss_type="ce"):
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    directory = PROJECT_ROOT / 'result/train/' / dataset_type
+
+    file_name = f"{loss_type}_{now}.txt"
+    start_log = f"The {loss_type.capitalize()} Experiment for is started at {now}."
+    print(start_log)
+
+    file = open(directory / file_name, "w")
+
+    if loss_type == "ce":
+        index = f"Epoch Train_CE Train_Accuracy Validation_CE Validation_Accuracy\n"
+
+        file.write(index)
+        print(index, end="")
+
+    return file

@@ -1,7 +1,6 @@
 import datetime
-from pathlib import Path
 
-PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
+from src.utils.project_root import PROJECT_ROOT
 
 
 def blue(text):
