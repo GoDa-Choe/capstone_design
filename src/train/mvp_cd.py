@@ -4,6 +4,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
+from src.models.pcn import PCN
 from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
 from src.models.pointnet import PointNetCls
 from src.models.chamfer_distance import distChamfer
@@ -134,8 +135,8 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         num_workers=NUM_WORKERS
     )
-
-    generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    # generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=1024, grid_size=4, detailed_output=True)
     generator.to(device=DEVICE)
 
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)
