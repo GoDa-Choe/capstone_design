@@ -38,9 +38,6 @@ def evaluate(generator, classifier, test_loader):
     category_correct = [0] * 16
     category_count = [0] * 16
 
-    generator.eval()
-    classifier.eval()
-
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
 
@@ -93,6 +90,9 @@ if __name__ == "__main__":
 
     generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
+
+    generator.eval()
+    classifier.eval()
 
     test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
 

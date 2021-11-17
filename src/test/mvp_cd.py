@@ -6,14 +6,12 @@ import torch.nn.functional as F
 
 from src.models.auto_encoder import AutoEncoderLight
 from src.models.pointnet import PointNetCls
-from src.models.chamfer_distance import distChamfer
-
 from src.dataset.dataset import MVP
+from src.models.chamfer_distance import distChamfer
 
 from src.utils.log import logging_for_test, logging_for_cd_test
 
 from tqdm import tqdm
-
 from src.utils.project_root import PROJECT_ROOT
 
 #####
@@ -30,6 +28,7 @@ NUM_WORKERS = 20
 
 #####
 
+
 def evaluate(generator, classifier, test_loader):
     total_loss = 0.0
     total_ce_loss = 0.0
@@ -42,6 +41,7 @@ def evaluate(generator, classifier, test_loader):
     category_count = [0] * 16
 
     with torch.no_grad():
+
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
             if INPUT_NUM_POINTS != 2024:
                 indices = torch.randperm(point_clouds.size()[1])
@@ -56,9 +56,6 @@ def evaluate(generator, classifier, test_loader):
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
-
-            # if FEATURE_TRANSFORM:  # for regularization
-            #     loss += feature_transform_regularizer(trans_feat) * 0.001
 
             total_ce_loss += loss
 
@@ -131,7 +128,7 @@ if __name__ == "__main__":
     )
 
     generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/ce/20211117_075102/40.pth"))
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/cd/20211117_121651/5.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
@@ -139,11 +136,12 @@ if __name__ == "__main__":
 
     generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
+
     generator.eval()
     classifier.eval()
 
-    # test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
-    # logging_for_test(test_result)
+    test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
+    logging_for_test(test_result)
 
     validation_result = evaluate_for_cd(generator=generator, validation_loader=validation_loader)
     logging_for_cd_test(validation_result)

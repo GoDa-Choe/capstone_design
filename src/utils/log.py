@@ -10,6 +10,15 @@ def blue(text):
     return '\033[94m' + text + '\033[0m'
 
 
+def logging_for_cd_test(validation_result):
+    def log_line(loss, batch_index):
+        return f"{loss / batch_index * 10_000:.6f}"
+
+    validation_log = log_line(*validation_result)
+
+    print(blue(validation_log))
+
+
 def logging_for_cd_train(file, epoch, train_result, validation_result):
     def log_line(loss, batch_index):
         return f"{loss / batch_index * 10_000:.6f}"

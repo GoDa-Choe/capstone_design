@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
 from src.models.pointnet import PointNetCls
 from src.models.chamfer_distance import distChamfer
-from src.dataset.dataset import Partitioned_MVP
+from src.dataset.dataset import MVP
 
 from src.utils.log import get_log_for_auto_encoder, logging_for_cd_train
 from src.utils.weights import get_trained_model_directory_for_auto_encoder, save_trained_model
@@ -17,9 +17,9 @@ import datetime
 from src.utils.project_root import PROJECT_ROOT
 
 #####
-THRESHOLD = 10
-
-NUM_POINTS = 1024
+THRESHOLD = 5
+INPUT_NUM_POINTS = 100
+OUTPUT_NUM_POINTS = 1024
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 200
@@ -50,6 +50,10 @@ def train(generator, train_loader, lr_schedule):
     generator.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
+        if INPUT_NUM_POINTS != 2024:
+            indices = torch.randperm(point_clouds.size()[1])
+            indices = indices[:INPUT_NUM_POINTS]
+            point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
@@ -57,13 +61,14 @@ def train(generator, train_loader, lr_schedule):
         optimizer.zero_grad()
 
         vector, trans, trans_feat = generator(point_clouds)
-        generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
+        generated_point_clouds = vector.view(-1, OUTPUT_NUM_POINTS, 3)
 
         dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
 
-        cd_loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
+        cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
+
         if FEATURE_TRANSFORM:  # for regularization
-            cd_loss += feature_transform_regularizer(trans_feat) * 0.001
+            cd_loss += feature_transform_regularizer(trans_feat) * 0.0001
         total_cd_loss += cd_loss.item()
         cd_loss.backward()
 
@@ -89,14 +94,19 @@ def evaluate(generator, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
+            if INPUT_NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:INPUT_NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
+
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
             vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
+            generated_point_clouds = vector.view(-1, OUTPUT_NUM_POINTS, 3)
 
             dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
-            cd_loss = ((torch.sqrt(dist1).mean(1) + torch.sqrt(dist2).mean(1)) / 2).mean()
+            cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
 
             total_cd_loss += cd_loss
 
@@ -104,13 +114,13 @@ def evaluate(generator, validation_loader):
 
 
 if __name__ == "__main__":
-    train_dataset = Partitioned_MVP(
+    train_dataset = MVP(
         dataset_type="train",
-        pcd_type="occluded")
+        pcd_type="incomplete")
 
-    validation_dataset = Partitioned_MVP(
+    validation_dataset = MVP(
         dataset_type="validation",
-        pcd_type="occluded")
+        pcd_type="incomplete")
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -125,14 +135,14 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
     generator.to(device=DEVICE)
 
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    log_file = get_log_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="cd")
-    weights_directory = get_trained_model_directory_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="cd")
+    log_file = get_log_for_auto_encoder(dataset_type="mvp", loss_type="cd")
+    weights_directory = get_trained_model_directory_for_auto_encoder(dataset_type="mvp", loss_type="cd")
 
     min_loss = float("inf")
     count = 0
