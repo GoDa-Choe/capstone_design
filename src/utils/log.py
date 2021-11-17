@@ -10,6 +10,20 @@ def blue(text):
     return '\033[94m' + text + '\033[0m'
 
 
+def logging_for_cd_train(file, epoch, train_result, validation_result):
+    def log_line(loss, batch_index):
+        return f"{loss / batch_index * 10_000:.6f}"
+
+    train_log = log_line(*train_result)
+    validation_log = log_line(*validation_result)
+
+    print(epoch, train_log, blue(validation_log))
+
+    if file:
+        log = f"{epoch} {train_log} {validation_log}\n"
+        file.write(log)
+
+
 def logging_for_test(test_result):
     def log_line(loss, batch_index, correct, count):
         return f"{loss / batch_index:.6f} {correct / count:.6f}"
@@ -160,5 +174,7 @@ def get_log_for_auto_encoder(dataset_type: str, loss_type="ce"):
 
         file.write(index)
         print(index, end="")
-
+    elif loss_type == 'cd':
+        index = f"Epoch Train_CD Validation_CD \n"
+        print(index, end="")
     return file

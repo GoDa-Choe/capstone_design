@@ -6,13 +6,11 @@ import torch.nn.functional as F
 
 from src.models.auto_encoder import AutoEncoderLight
 from src.models.pointnet import PointNetCls
-
 from src.dataset.dataset import Partitioned_MVP
 
 from src.utils.log import logging_for_test
 
 from tqdm import tqdm
-
 from src.utils.project_root import PROJECT_ROOT
 
 #####
@@ -28,6 +26,7 @@ NUM_WORKERS = 20
 
 #####
 
+
 def evaluate(generator, classifier, test_loader):
     total_loss = 0.0
     total_ce_loss = 0.0
@@ -40,7 +39,7 @@ def evaluate(generator, classifier, test_loader):
     category_count = [0] * 16
 
     generator.eval()
-
+    classifier.eval()
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
@@ -51,7 +50,7 @@ def evaluate(generator, classifier, test_loader):
             vector, trans, trans_feat = generator(point_clouds)
             generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
 
-            scores, trans, trans_feat = classifier(generated_point_clouds)
+            scores, trans, trans_feat = generator(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
 
             # if FEATURE_TRANSFORM:  # for regularization
@@ -86,7 +85,7 @@ if __name__ == "__main__":
     )
 
     generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/partitioned_mvp/ce/20211117_065251/6.pth"))
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "??"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
@@ -94,7 +93,7 @@ if __name__ == "__main__":
 
     generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
-    classifier.eval()
 
     test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
+
     logging_for_test(test_result)

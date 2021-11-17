@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
 from src.models.pointnet import PointNetCls
 
-from src.dataset.dataset import Partitioned_MVP
+from src.dataset.dataset import MVP
 from src.utils.log import get_log_for_auto_encoder, logging_for_train
 from src.utils.weights import get_trained_model_directory_for_auto_encoder, save_trained_model
 
@@ -18,7 +18,8 @@ from src.utils.project_root import PROJECT_ROOT
 #####
 THRESHOLD = 10
 
-NUM_POINTS = 1024
+INPUT_NUM_POINTS = 100
+OUTPUT_NUM_POINTS = 1024
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 200
@@ -49,6 +50,10 @@ def train(generator, classifier, train_loader, lr_schedule):
     generator.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
+        if INPUT_NUM_POINTS != 2024:
+            indices = torch.randperm(point_clouds.size()[1])
+            indices = indices[:INPUT_NUM_POINTS]
+            point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
@@ -56,7 +61,7 @@ def train(generator, classifier, train_loader, lr_schedule):
         optimizer.zero_grad()
 
         vector, trans, trans_feat = generator(point_clouds)
-        generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+        generated_point_clouds = vector.view(-1, 3, OUTPUT_NUM_POINTS)
 
         scores, _, _ = classifier(generated_point_clouds)
 
@@ -93,12 +98,16 @@ def evaluate(generator, classifier, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
+            if INPUT_NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:INPUT_NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
 
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
             vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            generated_point_clouds = vector.view(-1, 3, OUTPUT_NUM_POINTS)
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
@@ -123,13 +132,13 @@ def evaluate(generator, classifier, validation_loader):
 
 
 if __name__ == "__main__":
-    train_dataset = Partitioned_MVP(
+    train_dataset = MVP(
         dataset_type="train",
-        pcd_type="occluded")
+        pcd_type="incomplete")
 
-    validation_dataset = Partitioned_MVP(
+    validation_dataset = MVP(
         dataset_type="validation",
-        pcd_type="occluded")
+        pcd_type="incomplete")
 
     train_loader = torch.utils.data.DataLoader(
         dataset=train_dataset,
@@ -144,7 +153,8 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/ce/20211117_075102/40.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"
@@ -157,8 +167,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-    log_file = get_log_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="ce")
-    weights_directory = get_trained_model_directory_for_auto_encoder(dataset_type="partitioned_mvp", loss_type="ce")
+    log_file = get_log_for_auto_encoder(dataset_type="mvp", loss_type="ce")
+    weights_directory = get_trained_model_directory_for_auto_encoder(dataset_type="mvp", loss_type="ce")
 
     min_loss = float("inf")
     count = 0
