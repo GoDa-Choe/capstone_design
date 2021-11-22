@@ -18,7 +18,7 @@ from src.utils.project_root import PROJECT_ROOT
 
 
 #####
-NUM_POINTS = 100
+NUM_POINTS = 256
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
 
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/partitioned_mvp/occluded/20211117_030813/20.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "/home/goda/Undergraduate/capstone_design_base/pretrained_weights/partitioned_mvp/occluded/20211123_063300/15.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
     classifier.to(device=DEVICE)
 

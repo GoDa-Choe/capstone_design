@@ -4,16 +4,23 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.dataset.dataset import Partitioned_MVP
+from src.dataset.dataset import MVP
 from src.models.pointnet import PointNetCls
 from src.utils.log import logging_for_test
 
 from tqdm import tqdm
+import datetime
+from pathlib import Path
 
 from src.utils.project_root import PROJECT_ROOT
 
+# Todo 1. scheduler check
+# Todo 2. transformation network check
+# Todo 3. Saving trained network
+
+
 #####
-NUM_POINTS = 256
+NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 
@@ -37,6 +44,11 @@ def evaluate(model, test_loader):
     model.eval()
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
+            # sampling
+            if NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
 
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
@@ -64,9 +76,9 @@ def evaluate(model, test_loader):
 
 
 if __name__ == "__main__":
-    test_dataset = Partitioned_MVP(
-        dataset_type="test",
-        pcd_type="occluded")
+    test_dataset = MVP(
+        dataset_type="validation",
+        pcd_type="complete")
 
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,
@@ -77,7 +89,7 @@ if __name__ == "__main__":
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
 
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211123_062640_for_256_points/24.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/incomplete/20211117_011756/2.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
     classifier.to(device=DEVICE)
 

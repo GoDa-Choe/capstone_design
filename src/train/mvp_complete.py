@@ -19,12 +19,12 @@ from pathlib import Path
 
 
 #####
-THRESHOLD = 15
+THRESHOLD = 10
 
-NUM_POINTS = 1024
+NUM_POINTS = 256
 BATCH_SIZE = 32
 NUM_CLASSES = 16
-NUM_EPOCH = 200
+NUM_EPOCH = 120
 
 FEATURE_TRANSFORM = True
 
@@ -38,10 +38,6 @@ DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 NUM_WORKERS = 20
 
 PROJECT_ROOT = Path("/home/goda/Undergraduate/capstone_design_base")
-# RESULT_LOG_ROOT = PROJECT_ROOT / 'result'
-
-PRETRAINED_WEIGHTS = None
-TRAINED_WEIGHTS_ROOT = PROJECT_ROOT / ""
 
 
 #####

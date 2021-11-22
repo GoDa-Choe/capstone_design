@@ -15,7 +15,7 @@ import datetime
 #####
 THRESHOLD = 10
 
-NUM_POINTS = 100
+NUM_POINTS = 256
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 200
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         pcd_type="occluded")
 
     validation_dataset = Partitioned_MVP(
-        dataset_type="test",
+        dataset_type="validation",
         pcd_type="occluded")
 
     train_loader = torch.utils.data.DataLoader(

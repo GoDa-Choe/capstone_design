@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.dataset.dataset import Partitioned_MVP
+from src.dataset.dataset import Partitioned_MVP, MVP
 from src.models.pointnet import PointNetCls
 from src.utils.log import logging_for_test
 
@@ -38,6 +38,12 @@ def evaluate(model, test_loader):
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
 
+            # sampling
+            if NUM_POINTS != 2024:
+                indices = torch.randperm(point_clouds.size()[1])
+                indices = indices[:NUM_POINTS]
+                point_clouds = point_clouds[:, indices, :]
+
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
@@ -64,9 +70,9 @@ def evaluate(model, test_loader):
 
 
 if __name__ == "__main__":
-    test_dataset = Partitioned_MVP(
-        dataset_type="test",
-        pcd_type="occluded")
+    test_dataset = MVP(
+        dataset_type="validation",
+        pcd_type="complete")
 
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,
@@ -77,7 +83,7 @@ if __name__ == "__main__":
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
 
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211123_062640_for_256_points/24.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/partitioned_mvp/occluded/20211123_063300/15.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
     classifier.to(device=DEVICE)
 

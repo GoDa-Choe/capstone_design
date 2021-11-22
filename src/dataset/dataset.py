@@ -252,7 +252,7 @@ if __name__ == "__main__":
     train_dataset = Partitioned_MVP(
         dataset_type="train")
 
-    print(train_dataset.input_data.shape)  # (62400, 100, 3)
+    print(train_dataset.input_data.shape)  # (62400, 256, 3)
     print(train_dataset.labels.shape)  # (62400,)
     print(train_dataset.ground_truth_data.shape)  # (62400, 2048, 3)
     print()
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     validation_dataset = Partitioned_MVP(
         dataset_type="validation")
 
-    print(validation_dataset.input_data.shape)  # (41600, 100, 3)
+    print(validation_dataset.input_data.shape)  # (41600, 256, 3)
     print(validation_dataset.labels.shape)  # (41600,)
     print(validation_dataset.ground_truth_data.shape)  # (41600, 2048, 3)
     print()
@@ -269,6 +269,6 @@ if __name__ == "__main__":
         dataset_type="test",
         pcd_type="occluded")
 
-    print(test_dataset.input_data.shape)  # (59800, 100, 3)
+    print(test_dataset.input_data.shape)  # (59800, 256, 3)
     print(test_dataset.labels.shape)  # (59800,)
     print(test_dataset.ground_truth_data)  # None
