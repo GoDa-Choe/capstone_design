@@ -24,7 +24,7 @@ NUM_CLASSES = 16
 FEATURE_TRANSFORM = True
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-NUM_WORKERS = 16
+NUM_WORKERS = 20
 
 
 #####
@@ -138,11 +138,11 @@ if __name__ == "__main__":
     generator.eval()
     classifier.eval()
 
-    # test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
-    # logging_for_test(test_result)
-
-    test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
+    test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
     logging_for_test(test_result)
+
+    # test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
+    # logging_for_test(test_result)
 
     # validation_result = evaluate_for_cd(generator=generator, validation_loader=validation_loader)
     # logging_for_cd_test(validation_result)

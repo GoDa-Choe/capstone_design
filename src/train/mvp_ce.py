@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
+from src.models.pcn import PCN
 from src.models.pointnet import PointNetCls
 
 from src.dataset.dataset import MVP
@@ -33,7 +33,7 @@ STEP_SIZE = 20
 GAMMA = 0.5
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-NUM_WORKERS = 20
+NUM_WORKERS = 16
 
 
 #####
@@ -50,25 +50,22 @@ def train(generator, classifier, train_loader, lr_schedule):
     generator.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
-        if INPUT_NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:INPUT_NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
+        # if INPUT_NUM_POINTS != 2024:
+        #     indices = torch.randperm(point_clouds.size()[1])
+        #     indices = indices[:INPUT_NUM_POINTS]
+        #     point_clouds = point_clouds[:, indices, :]
 
-        point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
         optimizer.zero_grad()
 
-        vector, trans, trans_feat = generator(point_clouds)
-        generated_point_clouds = vector.view(-1, 3, OUTPUT_NUM_POINTS)
+        generated_point_clouds = generator(point_clouds)['coarse_output']
+        generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
         scores, _, _ = classifier(generated_point_clouds)
 
         loss = F.nll_loss(scores, labels)
 
-        if FEATURE_TRANSFORM:  # for regularization
-            loss += feature_transform_regularizer(trans_feat) * 0.001
         total_ce_loss += loss.item()
         loss.backward()
 
@@ -98,22 +95,18 @@ def evaluate(generator, classifier, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
-            if INPUT_NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:INPUT_NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+            # if INPUT_NUM_POINTS != 2024:
+            #     indices = torch.randperm(point_clouds.size()[1])
+            #     indices = indices[:INPUT_NUM_POINTS]
+            #     point_clouds = point_clouds[:, indices, :]
 
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, OUTPUT_NUM_POINTS)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
+            generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
-
-            # if FEATURE_TRANSFORM:  # for regularization
-            #     loss += feature_transform_regularizer(trans_feat) * 0.001
 
             total_ce_loss += loss
 
@@ -153,11 +146,10 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/ce/20211117_075102/40.pth"))
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, detailed_output=False)
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_004344/35.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
 
     generator.to(device=DEVICE)
