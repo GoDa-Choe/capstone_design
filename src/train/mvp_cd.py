@@ -18,9 +18,10 @@ import datetime
 from src.utils.project_root import PROJECT_ROOT
 
 #####
-THRESHOLD = 5
-INPUT_NUM_POINTS = 100
-OUTPUT_NUM_POINTS = 1024
+THRESHOLD = 10
+INPUT_NUM_POINTS = 256
+OUTPUT_NUM_POINTS = 2048
+
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 200
@@ -56,20 +57,17 @@ def train(generator, train_loader, lr_schedule):
             indices = indices[:INPUT_NUM_POINTS]
             point_clouds = point_clouds[:, indices, :]
 
-        point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
+        # point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
         optimizer.zero_grad()
 
-        vector, trans, trans_feat = generator(point_clouds)
-        generated_point_clouds = vector.view(-1, OUTPUT_NUM_POINTS, 3)
+        generated_point_clouds = generator(point_clouds)['coarse_output']
 
         dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
 
         cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
 
-        if FEATURE_TRANSFORM:  # for regularization
-            cd_loss += feature_transform_regularizer(trans_feat) * 0.0001
         total_cd_loss += cd_loss.item()
         cd_loss.backward()
 
@@ -100,11 +98,9 @@ def evaluate(generator, validation_loader):
                 indices = indices[:INPUT_NUM_POINTS]
                 point_clouds = point_clouds[:, indices, :]
 
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
-            vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, OUTPUT_NUM_POINTS, 3)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
 
             dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
             cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
@@ -135,8 +131,9 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         num_workers=NUM_WORKERS
     )
-    # generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=1024, grid_size=4, detailed_output=True)
+
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, detailed_output=False)
+    # generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=512, grid_size=2, detailed_output=True)
     generator.to(device=DEVICE)
 
     optimizer = optim.Adam(generator.parameters(), lr=LEARNING_RATE, betas=BETAS)

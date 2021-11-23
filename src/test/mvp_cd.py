@@ -5,6 +5,7 @@ import torch.utils.data
 import torch.nn.functional as F
 
 from src.models.auto_encoder import AutoEncoderLight
+from src.models.pcn import PCN
 from src.models.pointnet import PointNetCls
 from src.dataset.dataset import MVP
 from src.models.chamfer_distance import distChamfer
@@ -15,8 +16,8 @@ from tqdm import tqdm
 from src.utils.project_root import PROJECT_ROOT
 
 #####
-INPUT_NUM_POINTS = 100
-OUTPUT_NUM_POINTS = 1024
+INPUT_NUM_POINTS = 256
+OUTPUT_NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 
@@ -48,11 +49,10 @@ def evaluate(generator, classifier, test_loader):
                 indices = indices[:INPUT_NUM_POINTS]
                 point_clouds = point_clouds[:, indices, :]
 
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            vector, _, _ = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, OUTPUT_NUM_POINTS)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
+            generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
@@ -91,11 +91,9 @@ def evaluate_for_cd(generator, validation_loader):
                 indices = indices[:INPUT_NUM_POINTS]
                 point_clouds = point_clouds[:, indices, :]
 
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
-            vector, _, _ = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, OUTPUT_NUM_POINTS, 3)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
 
             dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
             cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
@@ -127,12 +125,12 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=OUTPUT_NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/cd/20211117_121651/5.pth"))
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, grid_size=4, detailed_output=False)
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/cd/20211123_081438/5.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
-        torch.load(PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"))
+        torch.load(PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_004344/35.pth"))
 
     generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
@@ -140,8 +138,11 @@ if __name__ == "__main__":
     generator.eval()
     classifier.eval()
 
+    test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
+    logging_for_test(test_result)
+
     test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
     logging_for_test(test_result)
 
-    validation_result = evaluate_for_cd(generator=generator, validation_loader=validation_loader)
-    logging_for_cd_test(validation_result)
+    # validation_result = evaluate_for_cd(generator=generator, validation_loader=validation_loader)
+    # logging_for_cd_test(validation_result)

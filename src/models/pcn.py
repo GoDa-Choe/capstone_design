@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from src.models.pooling import Pooling
 
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
 
 class PCN(torch.nn.Module):
     def __init__(self, emb_dims=1024, input_shape="bnc", num_coarse=1024, grid_size=4, detailed_output=True):
@@ -97,6 +99,9 @@ class PCN(torch.nn.Module):
         global_feature = torch.unsqueeze(self.global_feature_v, dim=1)  # Bx1x1024
         global_feature = global_feature.repeat([1, self.num_fine, 1])  # Bx16384x1024
 
+        grid_feature, point_feature, global_feature = grid_feature.to(device=DEVICE), point_feature.to(
+            device=DEVICE), global_feature.to(device=DEVICE)
+
         feature = torch.cat([grid_feature, point_feature, global_feature], dim=2)  # Bx16384x1029
 
         center = torch.unsqueeze(self.coarse_output, dim=2)  # Bx1024x1x3
@@ -156,11 +161,13 @@ class PCN(torch.nn.Module):
 
 if __name__ == '__main__':
     # Test the code.
-    x = torch.rand((10, 1024, 3))
+    x = torch.rand((10, 256, 3))
 
-    pcn = PCN(detailed_output=False)
-    y = pcn(x)
+    pcn = PCN(emb_dims=1024, num_coarse=512, grid_size=2, input_shape='bnc', detailed_output=True)
+    pcn.to(device=DEVICE)
+    print(next(pcn.parameters()).device)
+    y = pcn(x.to(device=DEVICE))
     print("Network Architecture: ")
     # print(pcn)
     print("Input Shape of PCN: ", x.shape, "\nOutput Shape of PCN: ", y['coarse_output'].shape)
-    # print("Input Shape of PCN: ", x.shape, "\nOutput Shape of PCN: ", y['fine_output'].shape)
+    print("Input Shape of PCN: ", x.shape, "\nOutput Shape of PCN: ", y['fine_output'].shape)

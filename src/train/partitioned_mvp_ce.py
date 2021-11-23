@@ -4,10 +4,10 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.models.auto_encoder import AutoEncoderLight, feature_transform_regularizer
+from src.models.pcn import PCN
 from src.models.pointnet import PointNetCls
-
 from src.dataset.dataset import Partitioned_MVP
+
 from src.utils.log import get_log_for_auto_encoder, logging_for_train
 from src.utils.weights import get_trained_model_directory_for_auto_encoder, save_trained_model
 
@@ -18,7 +18,7 @@ from src.utils.project_root import PROJECT_ROOT
 #####
 THRESHOLD = 10
 
-NUM_POINTS = 1024
+NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
 NUM_EPOCH = 200
@@ -49,21 +49,17 @@ def train(generator, classifier, train_loader, lr_schedule):
     generator.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
-
-        point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
         optimizer.zero_grad()
 
-        vector, trans, trans_feat = generator(point_clouds)
-        generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+        generated_point_clouds = generator(point_clouds)['coarse_output']
+        generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
         scores, _, _ = classifier(generated_point_clouds)
 
         loss = F.nll_loss(scores, labels)
 
-        if FEATURE_TRANSFORM:  # for regularization
-            loss += feature_transform_regularizer(trans_feat) * 0.001
         total_ce_loss += loss.item()
         loss.backward()
 
@@ -93,20 +89,15 @@ def evaluate(generator, classifier, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
-
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
+            generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
 
-            # if FEATURE_TRANSFORM:  # for regularization
-            #     loss += feature_transform_regularizer(trans_feat) * 0.001
-
-            total_ce_loss += loss
+            total_ce_loss += loss.item()
 
             _, predictions = torch.max(scores, 1)
             total_correct += (predictions == labels).sum().item()
@@ -144,10 +135,10 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, detailed_output=False)
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
-    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"
+    WEIGHTS_PATH = PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_004344/35.pth"
     classifier.load_state_dict(torch.load(WEIGHTS_PATH))
 
     generator.to(device=DEVICE)
