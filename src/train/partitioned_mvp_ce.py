@@ -32,7 +32,7 @@ STEP_SIZE = 20
 GAMMA = 0.5
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-NUM_WORKERS = 20
+NUM_WORKERS = 16
 
 
 #####

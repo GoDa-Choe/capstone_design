@@ -16,7 +16,7 @@ from tqdm import tqdm
 from src.utils.project_root import PROJECT_ROOT
 
 #####
-INPUT_NUM_POINTS = 256
+INPUT_NUM_POINTS = 2048
 OUTPUT_NUM_POINTS = 2048
 BATCH_SIZE = 32
 NUM_CLASSES = 16
@@ -24,7 +24,7 @@ NUM_CLASSES = 16
 FEATURE_TRANSFORM = True
 
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-NUM_WORKERS = 20
+NUM_WORKERS = 16
 
 
 #####
@@ -44,10 +44,10 @@ def evaluate(generator, classifier, test_loader):
     with torch.no_grad():
 
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
-            if INPUT_NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:INPUT_NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+            # if INPUT_NUM_POINTS != 2024:
+            #     indices = torch.randperm(point_clouds.size()[1])
+            #     indices = indices[:INPUT_NUM_POINTS]
+            #     point_clouds = point_clouds[:, indices, :]
 
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
@@ -86,10 +86,10 @@ def evaluate_for_cd(generator, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(validation_loader), start=1):
-            if INPUT_NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:INPUT_NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+            # if INPUT_NUM_POINTS != 2024:
+            #     indices = torch.randperm(point_clouds.size()[1])
+            #     indices = indices[:INPUT_NUM_POINTS]
+            #     point_clouds = point_clouds[:, indices, :]
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     )
 
     generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, grid_size=4, detailed_output=False)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/cd/20211123_081438/5.pth"))
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/cd/20211123_135758/8.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
@@ -138,8 +138,8 @@ if __name__ == "__main__":
     generator.eval()
     classifier.eval()
 
-    test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
-    logging_for_test(test_result)
+    # test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
+    # logging_for_test(test_result)
 
     test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
     logging_for_test(test_result)

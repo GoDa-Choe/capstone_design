@@ -56,10 +56,10 @@ def train(model, train_loader, lr_schedule):
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
 
         # sampling
-        if NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
+        # if NUM_POINTS != 2024:
+        #     indices = torch.randperm(point_clouds.size()[1])
+        #     indices = indices[:NUM_POINTS]
+        #     point_clouds = point_clouds[:, indices, :]
 
         point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
@@ -97,10 +97,10 @@ def evaluate(model, test_loader):
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(test_loader, start=1):
             # sampling
-            if NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+            # if NUM_POINTS != 2024:
+            #     indices = torch.randperm(point_clouds.size()[1])
+            #     indices = indices[:NUM_POINTS]
+            #     point_clouds = point_clouds[:, indices, :]
 
             point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)

@@ -19,7 +19,7 @@ from src.utils.project_root import PROJECT_ROOT
 
 #####
 THRESHOLD = 10
-INPUT_NUM_POINTS = 256
+INPUT_NUM_POINTS = 2048
 OUTPUT_NUM_POINTS = 2048
 
 BATCH_SIZE = 32
@@ -52,12 +52,11 @@ def train(generator, train_loader, lr_schedule):
     generator.train()
 
     for batch_index, (point_clouds, labels, ground_truths) in enumerate(train_loader, start=1):
-        if INPUT_NUM_POINTS != 2024:
-            indices = torch.randperm(point_clouds.size()[1])
-            indices = indices[:INPUT_NUM_POINTS]
-            point_clouds = point_clouds[:, indices, :]
+        # if INPUT_NUM_POINTS != 2024:
+        #     indices = torch.randperm(point_clouds.size()[1])
+        #     indices = indices[:INPUT_NUM_POINTS]
+        #     point_clouds = point_clouds[:, indices, :]
 
-        # point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
         point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
         optimizer.zero_grad()
@@ -93,10 +92,10 @@ def evaluate(generator, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(validation_loader, start=1):
-            if INPUT_NUM_POINTS != 2024:
-                indices = torch.randperm(point_clouds.size()[1])
-                indices = indices[:INPUT_NUM_POINTS]
-                point_clouds = point_clouds[:, indices, :]
+            # if INPUT_NUM_POINTS != 2024:
+            #     indices = torch.randperm(point_clouds.size()[1])
+            #     indices = indices[:INPUT_NUM_POINTS]
+            #     point_clouds = point_clouds[:, indices, :]
 
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 

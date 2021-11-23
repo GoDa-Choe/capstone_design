@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.utils.data
 import torch.nn.functional as F
 
-from src.models.auto_encoder import AutoEncoderLight
+from src.models.pcn import PCN
 from src.models.pointnet import PointNetCls
 
 from src.dataset.dataset import Partitioned_MVP
@@ -42,17 +42,13 @@ def evaluate(generator, classifier, test_loader):
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(test_loader), start=1):
 
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels = point_clouds.to(DEVICE), labels.to(DEVICE)
 
-            vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, 3, NUM_POINTS)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
+            generated_point_clouds = generated_point_clouds.transpose(2, 1)
 
             scores, _, _ = classifier(generated_point_clouds)
             loss = F.nll_loss(scores, labels)
-
-            # if FEATURE_TRANSFORM:  # for regularization
-            #     loss += feature_transform_regularizer(trans_feat) * 0.001
 
             total_ce_loss += loss
 
@@ -83,11 +79,9 @@ def evaluate_for_cd(generator, validation_loader):
 
     with torch.no_grad():
         for batch_index, (point_clouds, labels, ground_truths) in enumerate(tqdm(validation_loader), start=1):
-            point_clouds = point_clouds.transpose(2, 1)  # (batch_size, num_points, 3) -> (batch_size, 3, num_points)
             point_clouds, labels, ground_truths = point_clouds.to(DEVICE), labels.to(DEVICE), ground_truths.to(DEVICE)
 
-            vector, trans, trans_feat = generator(point_clouds)
-            generated_point_clouds = vector.view(-1, NUM_POINTS, 3)
+            generated_point_clouds = generator(point_clouds)['coarse_output']
 
             dist1, dist2, _, _ = distChamfer(generated_point_clouds, ground_truths)
             cd_loss = (dist1.mean(1) + dist2.mean(1)).mean()
@@ -118,12 +112,12 @@ if __name__ == "__main__":
         num_workers=NUM_WORKERS
     )
 
-    generator = AutoEncoderLight(num_point=NUM_POINTS, feature_transform=FEATURE_TRANSFORM)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/partitioned_mvp/ce/20211117_094226/61.pth"))
+    generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, detailed_output=False)
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/partitioned_mvp/ce/20211123_124301/20.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
-        torch.load(PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_044908_for_1024_points/24.pth"))
+        torch.load(PROJECT_ROOT / "pretrained_weights/mvp/complete/20211117_004344/35.pth"))
 
     generator.to(device=DEVICE)
     classifier.to(device=DEVICE)
