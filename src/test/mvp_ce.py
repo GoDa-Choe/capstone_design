@@ -126,7 +126,7 @@ if __name__ == "__main__":
     )
 
     generator = PCN(emb_dims=1024, input_shape='bnc', num_coarse=2048, detailed_output=False)
-    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/ce/20211123_165844/2.pth"))
+    generator.load_state_dict(torch.load(PROJECT_ROOT / "pretrained_weights/mvp/ce/20211123_175531/31.pth"))
 
     classifier = PointNetCls(k=NUM_CLASSES, feature_transform=FEATURE_TRANSFORM)
     classifier.load_state_dict(
@@ -140,8 +140,8 @@ if __name__ == "__main__":
     test_result = evaluate(generator=generator, classifier=classifier, test_loader=test_loader)
     logging_for_test(test_result)
 
-    # test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
-    # logging_for_test(test_result)
+    test_result = evaluate(generator=generator, classifier=classifier, test_loader=validation_loader)
+    logging_for_test(test_result)
 
     validation_result = evaluate_for_cd(generator=generator, validation_loader=validation_loader)
     logging_for_cd_test(validation_result)

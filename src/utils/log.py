@@ -187,3 +187,74 @@ def get_log_for_auto_encoder(dataset_type: str, loss_type="ce"):
         index = f"Epoch Train_CD Validation_CD \n"
         print(index, end="")
     return file
+
+
+def get_log_for_CE_CD(dataset_type: str, loss_type="ce_cd"):
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    directory = PROJECT_ROOT / 'result/train/' / dataset_type
+
+    file_name = f"{loss_type}_{now}.txt"
+    start_log = f"The {loss_type.capitalize()} Experiment for is started at {now}."
+    print(start_log)
+
+    file = open(directory / file_name, "w")
+
+    index = f"Epoch Train_CE_CD Train_CE Train_Accuracy Train_CD Validation_CE_CD Validation_CE Validation_Accuracy Validation_CD\n"
+
+    file.write(index)
+    print(index, end="")
+
+    return file
+
+
+def logging_for_CD_CE(file, epoch, train_result, validation_result):
+    def log_line_CD_CE(loss, batch_index):
+        return f"{loss / batch_index:.6f} "
+
+    def log_line_CD(loss, batch_index):
+        return f"{loss / batch_index * 10_000:.6f} "
+
+    def log_line(loss, batch_index, correct, count):
+        return f"{loss / batch_index:.6f} {correct / count:.6f} "
+
+    def category_log_line_for_monitor(category_correct, category_count):
+        log = ""
+        for i in range(len(category_correct)):
+            if category_count[i] == 0:  # for reduced MVP12 zero division error exception
+                log += f"{CATEGORY[i]}-None "
+            else:
+                log += f"{CATEGORY[i]}-{category_correct[i] / category_count[i]:.2f} "
+        return log
+
+    def category_log_line(category_correct, category_count):
+        log = "# "
+        for i in range(len(category_correct)):
+            if category_count[i] == 0:  # for reduced MVP12 zero division error exception
+                log += f"None "
+            else:
+                log += f"{category_correct[i] / category_count[i]:.2f} "
+        return log + "# "
+
+    def log(result):
+        CD_CE = result[:2]
+        CE = result[2:6]
+        CE_category = result[6:8]
+        CD = result[8:]
+
+        CD_CE_log = log_line_CD_CE(*CD_CE)
+        CE_log = log_line(*CE)
+        CE_category_log = category_log_line(*CE_category)
+        CD_log = log_line_CD(*CD)
+
+        log = CD_CE_log + CE_log + CE_category_log + CD_log
+
+        return log
+
+    train_log = log(train_result)
+    validation_log = log(validation_result)
+
+    print(epoch, train_log, blue(validation_log))
+
+    if file:
+        log = f"{epoch} {train_log} {validation_log}\n"
+        file.write(log)
