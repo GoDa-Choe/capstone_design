@@ -1,4 +1,4 @@
-### Occluded Point Clouds Classification via Point Clouds Completion 
+## Occluded Point Clouds Classification via Point Clouds Completion 
 #### Software Convergence Capstone design 2021-2
 
 - **Owner** Myenggyu Choe (2017103762, software convergence Kyunghee Univs.)
@@ -41,5 +41,6 @@ https://user-images.githubusercontent.com/68394004/147043612-5f530eaf-7746-4775-
 
 
 ### Reports
-* Report: [Report](Reports/Midterm.pdf)
-* Presentation Material: [Presentation Material](Reports/)
+* Report: [Report](./소프트웨어융합캡스톤디자인03(결과보고서_Point2Vision_최명규).pdf)
+* Presentation Material: [Presentation Material](./소프트웨어융합캡스톤디자인(최종발표_Point2Vision_최명규).pdf)
+* Demo Video: [Demo Video](./소프트웨어융합캡스톤디자인(시연동영상_Point2Vision_최명규).mp4)
