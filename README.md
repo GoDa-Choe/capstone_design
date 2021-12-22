@@ -50,7 +50,11 @@ MVP(Multi-View Partial Dataset) & Partitioned MVP
 --------
 
 ## Demo Video
-https://user-images.githubusercontent.com/68394004/147043612-5f530eaf-7746-4775-9545-ba5f89041863.mp4
+
+
+https://user-images.githubusercontent.com/68394004/147047842-0f11eb27-f6a4-441a-b5ec-178c389c0f3b.mp4
+
+
 Link: [Demo Video](./소프트웨어융합캡스톤디자인(시연동영상_Point2Vision_최명규).mp4)
 
 --------
