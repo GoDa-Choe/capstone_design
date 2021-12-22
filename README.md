@@ -56,11 +56,20 @@ Link: [Demo Video](./소프트웨어융합캡스톤디자인(시연동영상_Poi
 
 ### Commands
 
-train
+**train**
 ```
-python3 train_file.py(src/)
+python3 train_file.py(src/train/*)
+
+ex: python3 partitioned_mvp_occluded.py
 ```
 
+
+**test**
+```
+python3 test_file.py(src/test/*)
+
+ex: python3 partitioned_mvp_occluded_occluded.py
+```
 --------
 
 #### Report
