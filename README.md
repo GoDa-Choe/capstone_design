@@ -41,10 +41,11 @@ MVP(Multi-View Partial Dataset) & Partitioned MVP
 --------
 
 ## Results
-
+**실험1&2 결과**
 ![image](https://user-images.githubusercontent.com/68394004/147045857-862041ba-9e85-4a7c-8734-1734c3bbd66a.png)
 
-![image](https://user-images.githubusercontent.com/68394004/147045359-b383ad06-6447-4a0c-94fb-933e48b26511.png)
+**generator 성능 확인**
+![CD_11_generated_partitioned_mvp](https://user-images.githubusercontent.com/68394004/147047690-fbf2ef72-17fb-4dd9-8c0b-a21e2b0aaa1b.png)
 
 --------
 
