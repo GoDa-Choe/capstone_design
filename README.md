@@ -1,46 +1,71 @@
-## Occluded Point Clouds Classification via Point Clouds Completion 
+# Occluded Point Clouds Classification via Point Clouds Completion 
 #### Software Convergence Capstone design 2021-2
 
-- **Owner** Myenggyu Choe (2017103762, software convergence Kyunghee Univs.)
-- **Advisor** Prof. Hyoseok Hwang(software convergence Kyunghee Univs.)
+- **Myenggyu Choe (2017103762, software convergence Kyunghee Univs.)**
+- Advisor Prof. Hyoseok Hwang(software convergence Kyunghee Univs.)
 
-------------------------------------------
+
+--------
 
 ### Overview
-포인트 클라우드(Point Cloud)는 3차원 공간상에서 (x, y, z)로 표현되는 점들의 집합으로 Lidar, RGB-D Camera 등과 같은 3D 센서로 측정된다. 최근 3D 센서의 발전으로 정밀한 포인트 클라우드를 측정할 수 있게 됨에 따라 이를 활용한 컴퓨터비전 연구가 활발히 진행되고 있다. 또한 3차원 복원(3D Reconstruction)이라는 과정 없이도 포인트 클라우드는 그 자체로 기하학적 모양(Shape)과 규모(Scale) 등 3차원 정보를 온전히 표현하고 있다는 장점을 지니고 있다. 더구나 최근 들어 급격하게 발전하고 있는 딥러닝 등과 같은 AI 기술을 기반으로 포인트 클라우드는 자율주행 자동차, 로보틱스, 의료, SLAM 등 다양한 산업에서 당면하고 있는 3차원 컴퓨터비전 문제를 해결할 것으로 예측된다. 
+![image](https://user-images.githubusercontent.com/68394004/147044643-47fedd8b-bfbe-45e0-8f8b-17e65586d1d4.png)
+실제 환경에서 라이다 등과 같은 3D 센서로 관측한 Point Clouds는 Occlusion 현상으로 인하여 불완전하다. 즉 실제 관측 가능 Point Clouds는 불완전한 포인트 클라우드로 분류할 수 있다.
+이에 따른 학습 데이터셋과 테스트 데이터셋의 차이는 실제 성능 하락을 야기한다. 이번 캡스톤디자인에서는 생성에서 분류를 이어이지는 2단계 구조를 도입하여 Occluded Point Clouds의 Classification 정확도를 향상한다.
 
-  이에 따라 학계에서도 포인트 클라우드를 컴퓨터비전 연구에 활용하려는 노력이 모이고 있다. 실제로 CVPR 등 저명한 컴퍼런스 제출되는 포인트 클라우드 관련 연구는 꾸준히 상승세이다. 특히 지난 2016년 CVPR에서 발표된 PointNet은 Symmetric Function과 Point-wise MLP을 통해 포인트 클라우드가 내재하고 있는 Unstructed, Unorderd 문제를 획기적으로 해결해 주목을 받았다. 이에 따라 현재에도 PointNet을 기반으로 Point Cloud에 대한 다양한 컴퓨터비전 연구들이 진행되고 있다.
+--------
 
-  그러나 이러한 선행 연구들이 실제 환경에서 측정되는 포인트 클라우드에 실용적일까라는 질문에는 다소 의문이 존재한다. 이는 앞선 선행 연구 대부분이 포인트가 곡면을 따라 균일하게 분포된 완전한 포인트 클라우드(Complete Point Clouds)를 대상으로 연구를 진행했기 때문이다. 즉 이들 연구는 실제 환경에서 관측 가능한 포인트 클라우드가 아닌 기존 3D CAD 모델에서 임의 추출한 포인트 클라우드를 데이터셋으로 선정하고 있다.
-  
-  우리가 실제 환경에서 관측할 수 있는 포인트 클라우드는 필연적으로 불완전하다. 이는 실제 환경에서 관측 가능한 포인트 클라우드는 언제나 완전한 포인트 클라우드의 부분집합이기 때문이다. 불완전 포인트 클라우드(Incomplete Point Clouds)는 노이즈(Noise), 해상도(Device-Resolution) 등과 같은 다양한 문제로 발생하며 그중 가장 큰 이유는 바로 가려짐(Occlusion) 문제이다. 가려짐은 사물의 일부만이 측정되는 현상으로 사물의 뒷면이 가려지는 Self-Occlusion, 센서의 시야각으로 초래되는 View-Occlusion, 장애물로 발생하는 Ambient-Occlusion으로 구분된다. 더구나 사물의 뒷면이 관측되지 않는 Self-Occlusion 현상은 단일 3D 센서에서 불가피하기 때문에 실제 환경에서 관측한 포인트 클라우드는 언제나 불완전한 형태로 측정되며 이에 따라 3차원 정보의 손실이 내재되어 있다고 볼 수 있다. 이는 완전한 포인트 클라우드를 대상으로 진행된 선행 연구들이 실제 환경에서 관측한 불완전 포인트 클라우드에서 좋은 성능을 내지 못하는 데 가장 핵심적인 이유가 된다. 
+### Architecture
+![occluded_point_cloud_classification_network_architecture](https://user-images.githubusercontent.com/68394004/147044985-36ef4fdf-8e9b-4f8f-8daf-43fee78cbdcb.jpg)
 
-  실제 환경에서 관측 가능한 포인트 클라우드는 필연적으로 불완전하기 때문에 앞선 선행 연구들이 제시하는 방법으로는 3D 컴퓨터비전 문제를 해결하는 것에는 한계가 존재한다. 즉 딥러닝 관점에서 이해하자면 완전한 포인트 클라우드로 학습된 모델은 실제 환경에서 관측된 불완전한 포인트 클라우드가 입력으로 주어졌을 때 성능 하락이 불가피하다. 즉 학습 성능을 보장할 수 없는 문제와 한계가 나타난다. 이러한 문제와 한계를 극복하고 불완전한 포인트 클라우드에서 실용적인 성능을 낼 수 있는 강건한 알고리즘을 구현하기 위해 이번 소프트웨어융합 캡스톤디자인에서는 포인트 클라우드 컴플리션(Point Clouds Completion)을 활용하는 방법에 관하여 탐구한다. 구체적으로 컴퓨터비전의 기본적인 과업으로 여겨지는 분류(Classification) 문제를 탐구 주제로 선정하여 불완전 포인트 클라우드의 분류 문제를 해결하고자 한다. 즉 포인트 클라우드의 컴플리션을 활용하여 실제 환경에서 관측한 불완전 포인트 클라우드의 분류 성능의 하락을 최소화하는 방법에 관하여 탐구한다.
+생성에서 분류로 이어이지 2단계 구조를 도입하고 있다. Generator는 AutoEncoder 베이스의 PCN(Point Completion Network)를 활용하였으며 Classifier는 PointNet을 활용하였다.
+PointNet은 complete point clouds로 사전 학습되었으며 Generator는 손실함수를 Cross Entropy와 Chamfer Distance로 나눠 학습하였다.
 
+**Generator** : PCN  
+**Classifier** : pre-trained PointNet
 
-  포인트 클라우드 컴플리션은 가려짐 현상으로 초래되는 불완전한 포인트 클라우드에서 완전한 포인트 클라우드로 생성하는 생성(Generation) 모델로 불완전한 포인트 클라우드의 분류 성능을 향상하기 위한 핵심 단계이다. 이번 캡스톤디자인에서는 생성(Generation)에서 분류(Classification)로 이어지는 2단계 구조를 핵심 골자로 채택한다. 불완전 포인트 클라우드에서 완전한 포인트 클라우드를 생성하는 첫 번째 단계와 앞서 생성된 완전한 포인트 클라우드를 대상으로 실제 분류를 진행하는 두 번째 단계를 지니고 있다.
+--------
 
- 포인트 클라우드 데이터셋은 Lidar 등과 같은 3D 센서의 비싼 가격과 실제 관측에서 소요되는 높은 비용, 관측된 데이터의 라벨링의 어려움 등과 같은 이유로 수집과 확보에 난해한 데이터셋으로 분류된다. 이에 따라 포인트 클라우드를 연구하는 다수의 선행 연구들은 실용적인 문제로 3D 센서로 관측된 불완전한 포인트 클라우드가 아닌 ModelNet10/40, ShapeNet, SharpNet 등과 같이 기존 3D CAD 모델에서 포인트를 임의 추출한 완전한 포인트 클라우드를 데이터셋으로 활용하고 있다. 이에 따라 학습 데이터셋은 완전한 포인트 클라우드인 반면, 테스트 데이터셋은 가려짐 현상이 발생한 불완전한 포인트 클라우드라는 문제가 발생한다. 즉 학습 데이터셋과 테스트 데이터셋의 차이가 현저히 발생하며 이는 실제 환경에서 상당한 성능 하락을 야기한다. 이번 캡스톤디자인에서는 체계적인 실험을 통해 실제 환경에서 가려짐 현상이 발생했을 때 분류 정확도의 하락 정도를 관측한다. 또한 생성에서 분류로 이어지는 2단계 구조를 도입하여 학습 데이터셋과 테스트 데이터셋의 차이로 발생하는 성능 하락 폭을 최소화한다. 이를 통해 포인트 클라우드 컴플리션을 활용하여 불완전한 포인트 클라우드의 분류 성능을 향상하는 방법에 관하여 탐구한다.
+### Experiments
+
+**실험1**
+![image](https://user-images.githubusercontent.com/68394004/147045946-dac0bda9-c148-4365-b0b8-afa4bd04a077.png)
+
+**실험2**
+![image](https://user-images.githubusercontent.com/68394004/147046002-b37fde71-5870-49bf-956b-da43f84949d0.png)
+
+### Dataset
+MVP(Multi-View Partial Dataset) & Partitioned MVP
+![image](https://user-images.githubusercontent.com/68394004/147045896-ef220d69-1d05-4f8a-9d80-fcae5ad26ace.png)
+![image](https://user-images.githubusercontent.com/68394004/147045905-5aa30bc3-5462-4b66-a882-13885965e893.png)
+
+--------
 
 ### Results
 
-![112](https://user-images.githubusercontent.com/68394004/146799430-8c1b3a4a-e1fa-4c47-88ca-376a6398a6a9.png)
+![image](https://user-images.githubusercontent.com/68394004/147045857-862041ba-9e85-4a7c-8734-1734c3bbd66a.png)
 
-![133](https://user-images.githubusercontent.com/68394004/146799442-9f59dd47-8667-4237-87ee-d630700a833d.png)
+![image](https://user-images.githubusercontent.com/68394004/147045359-b383ad06-6447-4a0c-94fb-933e48b26511.png)
 
-
-### Conclusion
-이번 캡스톤디자인을 통해 완전한 포인트 클라우드로 학습된 분류기는 가려짐 현상이 발생하는 실제 환경에서 적절한 분류 성능을 내지 못하는 것을 실험1을 통해 확인했다. 이는 학습 데이터셋은 완전한 포인트 클라우드인 것에 반해 테스트 데이터셋은 불완전한 포인트 클라우드로 학습 데이터셋과 테스트 데이터셋의 차이로 야기되는 문제로 해석할 수 있다. 더구나 Self-Occlusion은 단일 3D 센서로 관측할 경우 나타나는 불가피한 현상이기 때문에 실제 환경에서 관측 가능한 포인트 클라우드는 필연적으로 불완전할 수밖에 없다. 즉 분류기만을 활용했을 때는 실제 환경에서는 실용적인 분류 정확도를 기대할 수 없다. 그러나 실험2를 통해 포인트 클라우드 컴플리션을 활용하면 이러한 문제를 상당 부분 해결할 수 있었다. 생성에서 분류로 이어 지는 2단계 구조를 도입하면 불완전한 포인트 클라우드에서도 최소 81.54% 이상의 분류 정확도를 얻을 수 있었다. 이를 통해 생성 모델을 활용하면 완전한 포인트 클라우드로 학습된 분류기에서도 불완전한 포인트 클라우드의 분류 정확도를 신뢰할 수 있는 수준까지 향상할 수 있었다.
-
-  그러나 분류기를 불완전한 포인트 클라우드로 학습하는 분류기 단일 방법에서의 분류 정확도는 MVP 데이터셋과 Partitioned-MVP 데이터셋에서 각각 88.30%와 84.77%로 이번 캡스톤디자인에서 제안한 생성-분류 2단계 구조보다 각각 1.48%p와 1.66% 높은 분류 정확도를 보였다. 이는 포인트 클라우드 컴플리션을 활용하는 불완전한 포인트 클라우드의 분류 성능의 한계로 뽑을 수 있다.
-  
-  하지만 불완전한 포인트 클라우드는 Lidar 등과 같은 3D 센서의 비싼 가격과, 실제 관측의 높은 비용, 라벨링의 어려움 등과 같은 이유로 다량의 데이터셋을 모으는 것은 현실적으로 어려움이 존재한다. 이에 따라 ModelNet, ShapeNet, SharpNet 등과 같이 포인트 클라우드를 주제로 하는 대다수의 연구들은 기존 3D CAD 모델에서 포인트를 임의 추출한 완전한 포인트 클라우드 데이터셋을 활용하고 있다. 즉 데이터셋 확보 관점에서 불완전한 포인트 클라우드로 분류 모델을 학습하는 것은 한계가 존재한다. 또한 불완전한 포인트 클라우드는 3차원 정보의 손실을 내재하고 있다. 이러한 정보의 손실은 포인트 클라우드가 사물의 기하학적 모양과 규모 등 3차원 정보를 그 자체로 온전히 표현하고 있다는 장점을 훼손하게 된다. 따라서 불완전한 포인트 클라우드는 양적으로나 질적으로 데이터셋의 확보가 현실적으로 어려우며 3차원 정보의 손실이 불가피하기 때문에 실용적인 학습 대상이 될 수 없다.
+--------
 
 ### Demo Video
 https://user-images.githubusercontent.com/68394004/147043612-5f530eaf-7746-4775-9545-ba5f89041863.mp4
+Link: [Demo Video](./소프트웨어융합캡스톤디자인(시연동영상_Point2Vision_최명규).mp4)
 
+--------
 
-### Reports
-* Report: [Report](./소프트웨어융합캡스톤디자인03(결과보고서_Point2Vision_최명규).pdf)
-* Presentation Material: [Presentation Material](./소프트웨어융합캡스톤디자인(최종발표_Point2Vision_최명규).pdf)
-* Demo Video: [Demo Video](./소프트웨어융합캡스톤디자인(시연동영상_Point2Vision_최명규).mp4)
+### Commands
+
+train
+```
+python3 train_file.py(src/)
+```
+
+--------
+
+#### Report
+[소프트웨어융합캡스톤디자인03(결과보고서_Point2Vision_최명규).pdf](https://github.com/GoDa-Choe/capstone_design/files/7760363/03._Point2Vision_.pdf)
+
+#### Presentation
+[소프트웨어융합캡스톤디자인(최종발표_Point2Vision_최명규).pdf](https://github.com/GoDa-Choe/capstone_design/files/7760362/_Point2Vision_.pdf)
+
